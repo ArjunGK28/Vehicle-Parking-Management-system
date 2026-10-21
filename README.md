@@ -47,6 +47,32 @@ as described in the Software Architecture Document.
    npm run db:init
    ```
 
+5. Create the demo staff accounts (registration only creates drivers):
+
+   ```
+   npm run db:seed
+   ```
+
+   This adds an administrator and a parking attendant using the `SEED_*` emails and
+   passwords in `server/.env`. Running it again leaves existing accounts alone.
+
+## Roles
+
+| Role | How to get one | Home page |
+|---|---|---|
+| Driver | Register on the sign-up page | `/driver` |
+| Parking Attendant | `npm run db:seed` (later: created by an admin) | `/attendant` |
+| Administrator | `npm run db:seed` | `/admin` |
+
+Protect an API route by role with `allowRoles` from `server/src/middleware/requireRole.js`:
+
+```js
+router.post('/slots', allowRoles(ROLES.ADMIN), controller.create);
+```
+
+It returns 401 when nobody is logged in and 403 when the role is not allowed. On the client,
+wrap the page in `<RequireAuth roles={[ROLES.ADMIN]}>`.
+
 ## Running the app
 
 Start the API and the web client in two terminals:
@@ -84,10 +110,10 @@ npm run db:reset
 
 ```
 client/src/
-  pages/              screens (auth/, and driver/, attendant/, admin/ as they are built)
+  pages/              screens: auth/, driver/, attendant/, admin/
   auth/               login state and route guards
 server/src/
-  middleware/         security layer: authenticate, error handling
+  middleware/         security layer: authenticate, requireRole, error handling
   modules/<module>/   controller, service, repository per business module
 database/             schema.sql and the one-time setup script
 tests/                unit/ and integration/ tests

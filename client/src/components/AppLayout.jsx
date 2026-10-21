@@ -1,11 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { ROLE_LABELS } from '../auth/roles.js';
 
-const ROLE_LABELS = { driver: 'Driver', attendant: 'Parking Attendant', admin: 'Administrator' };
-
-// Landing page after login (UC-01 step 4). Role-specific screens go in
-// pages/driver, pages/attendant and pages/admin as their stories are built.
-export default function DashboardPage() {
+// Page frame for logged-in users: greeting, role badge and logout.
+export default function AppLayout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -25,10 +23,7 @@ export default function DashboardPage() {
         </div>
         <button type="button" className="secondary" onClick={handleLogout}>Log out</button>
       </header>
-      <section className="panel">
-        <h2>Dashboard</h2>
-        <p className="muted">Parking features will appear here as they are added.</p>
-      </section>
+      {children}
     </main>
   );
 }

@@ -1,4 +1,5 @@
 const db = require('../../db');
+const { ROLES } = require('./roles');
 
 const PUBLIC_COLUMNS = 'id, name, email, role, created_at AS createdAt';
 
@@ -16,7 +17,7 @@ async function findById(id) {
 }
 
 // Returns the new user's id. Throws mysql2's ER_DUP_ENTRY if the email is taken.
-async function create({ name, email, passwordHash, role = 'driver' }) {
+async function create({ name, email, passwordHash, role = ROLES.DRIVER }) {
   const [result] = await db.query(
     'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
     [name, email, passwordHash, role],
