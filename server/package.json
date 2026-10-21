@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "db:init": "node scripts/db.js init",
-    "db:reset": "node scripts/db.js reset"
+    "db:reset": "node scripts/db.js reset",
+    "db:seed": "node scripts/seed.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

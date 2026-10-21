@@ -11,4 +11,11 @@ const cookieOptions = {
   path: '/',
 };
 
-module.exports = { SESSION_COOKIE, cookieOptions };
+// Returns the session token from the request, or null if it is missing or malformed.
+// cookie-parser turns values such as j:{"a":1} into objects, so only plain strings are accepted.
+function readSessionToken(req) {
+  const token = req.cookies && req.cookies[SESSION_COOKIE];
+  return typeof token === 'string' && token.length > 0 && token.length <= 200 ? token : null;
+}
+
+module.exports = { SESSION_COOKIE, cookieOptions, readSessionToken };

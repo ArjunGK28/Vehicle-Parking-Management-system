@@ -16,6 +16,11 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ error: 'Request body is not valid JSON' });
   }
 
+  // Request body larger than the express.json limit
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large' });
+  }
+
   console.error(err);
   return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }
