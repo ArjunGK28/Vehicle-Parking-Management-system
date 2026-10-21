@@ -7,12 +7,14 @@
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS users (
-  id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-  name          VARCHAR(100)  NOT NULL,
-  email         VARCHAR(254)  NOT NULL,
-  password_hash CHAR(60)      NOT NULL,
-  role          ENUM('driver', 'attendant', 'admin') NOT NULL DEFAULT 'driver',
-  created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id                    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  name                  VARCHAR(100)  NOT NULL,
+  email                 VARCHAR(254)  NOT NULL,
+  password_hash         CHAR(60)      NOT NULL,
+  failed_login_attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  locked_until          DATETIME      NULL,
+  role                  ENUM('driver', 'attendant', 'admin') NOT NULL DEFAULT 'driver',
+  created_at            TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email)
 );
