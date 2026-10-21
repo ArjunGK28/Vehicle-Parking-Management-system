@@ -1,6 +1,6 @@
 const service = require('./users.service');
 const { validateRegistration, validateLogin } = require('./users.validation');
-const { SESSION_COOKIE, cookieOptions } = require('../../sessionCookie');
+const { SESSION_COOKIE, cookieOptions, readSessionToken } = require('../../sessionCookie');
 
 async function register(req, res) {
   const user = await service.register(validateRegistration(req.body));
@@ -14,7 +14,7 @@ async function login(req, res) {
 }
 
 async function logout(req, res) {
-  await service.logout(req.cookies[SESSION_COOKIE]);
+  await service.logout(readSessionToken(req));
   res.clearCookie(SESSION_COOKIE, cookieOptions);
   res.status(204).end();
 }
