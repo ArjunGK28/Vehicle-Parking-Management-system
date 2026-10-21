@@ -16,3 +16,16 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email)
 );
+
+-- One row per logged-in browser. Only a SHA-256 hash of the session token is stored,
+-- so a leaked table cannot be used to hijack sessions.
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id      INT UNSIGNED NOT NULL,
+  token_hash   CHAR(64)     NOT NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_auth_sessions_token (token_hash),
+  CONSTRAINT fk_auth_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
