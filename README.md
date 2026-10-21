@@ -110,10 +110,10 @@ npm run db:reset
 
 ```
 client/src/
-  pages/              screens (auth/, and driver/, attendant/, admin/ as they are built)
+  pages/              screens: auth/, driver/, attendant/, admin/
   auth/               login state and route guards
 server/src/
-  middleware/         security layer: authenticate, error handling
+  middleware/         security layer: authenticate, requireRole, error handling
   modules/<module>/   controller, service, repository per business module
 database/             schema.sql and the one-time setup script
 tests/                unit/ and integration/ tests
