@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const config = require('../../config');
 const { HttpError } = require('../../errors');
 const users = require('./users.repository');
 const sessions = require('./sessions.repository');
@@ -25,18 +26,42 @@ async function register({ name, email, password }) {
   return users.findById(id);
 }
 
+// NFR-13: message shown for a locked account.
+function lockedError(secondsLeft) {
+  const minutes = Math.max(1, Math.ceil(secondsLeft / 60));
+  const unit = minutes === 1 ? 'minute' : 'minutes';
+  return new HttpError(423, `Account locked after too many failed login attempts. Try again in ${minutes} ${unit}.`);
+}
+
 // UC-01 main flow steps 3-4. Returns the user and a new session token for the cookie.
 // The same message is used for an unknown email and a wrong password, so the
 // response does not reveal which accounts exist (UC-01 alternative flow).
+// NFR-13: after config.lockout.maxAttempts consecutive failures the account is locked temporarily.
 async function login({ email, password }) {
   const found = await users.findByEmailWithHash(email);
+
+  // A locked account is refused before the password is checked,
+  // so guessing during the lock gets nowhere (even a correct password is refused).
+  if (found && found.isLocked) throw lockedError(found.lockSecondsLeft);
+
   const ok = await verifyPassword(password, found && found.passwordHash);
-  if (!found || !ok) throw new HttpError(401, 'Invalid email or password');
+  if (!found || !ok) {
+    if (found) {
+      const state = await users.recordFailedLogin(found.id, {
+        maxAttempts: config.lockout.maxAttempts,
+        lockSeconds: config.lockout.durationMinutes * 60,
+      });
+      if (state.isLocked) throw lockedError(state.lockSecondsLeft);
+    }
+    throw new HttpError(401, 'Invalid email or password');
+  }
+
+  if (found.failedLoginAttempts > 0 || found.lockedUntil) await users.clearFailedLogins(found.id);
 
   const token = crypto.randomBytes(32).toString('base64url');
   await sessions.create(found.id, hashToken(token));
 
-  const { passwordHash, ...user } = found;
+  const { passwordHash, failedLoginAttempts, lockedUntil, isLocked, lockSecondsLeft, ...user } = found;
   return { user, token };
 }
 

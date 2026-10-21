@@ -25,4 +25,9 @@ module.exports = {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'parking_dev',
   },
+  // NFR-13: 5 consecutive failed logins lock the account for a while.
+  lockout: {
+    maxAttempts: 5,
+    durationMinutes: Number(process.env.LOCKOUT_MINUTES) || 15,
+  },
 };
