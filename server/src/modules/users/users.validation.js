@@ -41,6 +41,7 @@ function validateRegistration(body = {}) {
 }
 
 // Login only checks presence and shape; whether the credentials are right is the service's job.
+// A password over 72 bytes can never match (registration refuses it), so it is rejected here.
 function validateLogin(body = {}) {
   const email = asText(body.email).trim().toLowerCase();
   const password = asText(body.password);
@@ -48,7 +49,9 @@ function validateLogin(body = {}) {
 
   const emailError = checkEmail(email);
   if (emailError) fields.email = emailError;
+
   if (!password) fields.password = 'Password is required';
+  else if (Buffer.byteLength(password) > PASSWORD_MAX_BYTES) fields.password = 'Password is too long';
 
   if (Object.keys(fields).length > 0) fail(fields);
   return { email, password };
