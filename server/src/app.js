@@ -4,6 +4,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const usersRoutes = require('./modules/users/users.routes');
+const vehiclesRoutes = require('./modules/users/vehicles/vehicles.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
@@ -17,8 +18,10 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', usersRoutes);
+app.use('/api/vehicles', vehiclesRoutes);
 
 app.use('/api', notFound);
+
 
 // Serve the built web client (npm run build) and let React Router handle its paths.
 if (fs.existsSync(CLIENT_DIST)) {

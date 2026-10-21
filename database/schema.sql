@@ -29,3 +29,23 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   UNIQUE KEY uq_auth_sessions_token (token_hash),
   CONSTRAINT fk_auth_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
+
+
+-- ---------------------------------------------------------------------
+-- Vehicles module (FR-02)
+-- ---------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS vehicles (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    registration_number VARCHAR(20) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    colour VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_vehicles_registration_number (registration_number),
+    CONSTRAINT fk_vehicles_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON DELETE CASCADE
+);
