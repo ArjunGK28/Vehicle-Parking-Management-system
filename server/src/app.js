@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const usersRoutes = require('./modules/users/users.routes');
 const vehiclesRoutes = require('./modules/users/vehicles/vehicles.routes');
+const slotsRoutes = require('./modules/slots/slots.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
@@ -19,6 +20,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', usersRoutes);
 app.use('/api/vehicles', vehiclesRoutes);
+app.use('/api/slots', slotsRoutes);
 
 app.use('/api', notFound);
 

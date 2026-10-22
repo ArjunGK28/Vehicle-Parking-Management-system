@@ -51,3 +51,21 @@ CREATE TABLE IF NOT EXISTS vehicles (
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON DELETE CASCADE
 );
+
+
+-- ---------------------------------------------------------------------------
+-- Slots module (FR-12, UC-12)
+-- ---------------------------------------------------------------------------
+
+-- A slot is never deleted, only disabled, so past parking sessions keep their slot.
+-- Occupied and Reserved are worked out from sessions and reservations (FR-05, FR-04);
+-- only the admin's Unavailable switch is stored here.
+CREATE TABLE IF NOT EXISTS parking_slots (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  code        VARCHAR(10)  NOT NULL,
+  slot_type   ENUM('two_wheeler', 'four_wheeler') NOT NULL,
+  is_disabled BOOLEAN      NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_parking_slots_code (code)
+);
