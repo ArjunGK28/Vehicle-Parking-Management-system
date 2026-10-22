@@ -164,6 +164,12 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
 .data-table td { padding: 0.55rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
 .data-table th { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 .data-table .cell-action { text-align: right; }
+.data-table td:first-child { white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .data-table th,
+  .data-table td { padding: 0.5rem 0.3rem; }
+}
 
 .status {
   display: inline-block;
