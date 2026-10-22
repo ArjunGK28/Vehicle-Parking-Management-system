@@ -4,7 +4,16 @@ const db = require('../../db');
 // join in with parking sessions (#60) and reservations (#58).
 const SLOT_COLUMNS = `
   id, code, slot_type AS type,
-  IF(is_disabled, 'unavailable', 'available') AS status,
+  CASE
+    WHEN is_disabled THEN 'unavailable'
+    WHEN EXISTS (
+      SELECT 1
+      FROM parking_sessions session
+      WHERE session.slot_id = parking_slots.id
+        AND session.status = 'active'
+    ) THEN 'occupied'
+    ELSE 'available'
+  END AS status,
   created_at AS createdAt`;
 
 // Sorts P-2 before P-10.
