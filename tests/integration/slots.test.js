@@ -8,12 +8,10 @@ const { createUser, loginAs } = require('../helpers/users');
 
 let admin;
 
-beforeAll(async () => {
+beforeEach(async () => {
   await clearTables();
   admin = await loginAs(await createUser(ROLES.ADMIN));
 });
-
-beforeEach(() => db.query('TRUNCATE TABLE parking_slots'));
 
 afterAll(() => db.end());
 
