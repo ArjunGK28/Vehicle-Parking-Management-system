@@ -32,4 +32,7 @@ export const api = {
   login: (credentials) => request('POST', '/auth/login', credentials),
   logout: () => request('POST', '/auth/logout'),
   me: () => request('GET', '/auth/me'),
+  listSlots: () => request('GET', '/slots'),
+  addSlot: (slot) => request('POST', '/slots', slot),
+  setSlotDisabled: (id, disabled) => request('PATCH', `/slots/${id}`, { disabled }),
 };

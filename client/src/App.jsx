@@ -7,6 +7,7 @@ import RegisterPage from './pages/auth/RegisterPage.jsx';
 import DriverHome from './pages/driver/DriverHome.jsx';
 import AttendantHome from './pages/attendant/AttendantHome.jsx';
 import AdminHome from './pages/admin/AdminHome.jsx';
+import SlotsPage from './pages/admin/SlotsPage.jsx';
 
 // /dashboard sends each user to their own role's home page.
 function RoleHome() {
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/driver" element={<RequireAuth roles={[ROLES.DRIVER]}><DriverHome /></RequireAuth>} />
           <Route path="/attendant" element={<RequireAuth roles={[ROLES.ATTENDANT]}><AttendantHome /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth roles={[ROLES.ADMIN]}><AdminHome /></RequireAuth>} />
+          <Route path="/admin/slots" element={<RequireAuth roles={[ROLES.ADMIN]}><SlotsPage /></RequireAuth>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
