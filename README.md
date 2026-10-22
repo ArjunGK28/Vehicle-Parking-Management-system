@@ -54,7 +54,8 @@ as described in the Software Architecture Document.
    ```
 
    This adds an administrator and a parking attendant using the `SEED_*` emails and
-   passwords in `server/.env`. Running it again leaves existing accounts alone.
+   passwords in `server/.env`, plus 30 demo parking slots: P-01 to P-20 for four-wheelers
+   and P-21 to P-30 for two-wheelers. Running it again leaves existing accounts and slots alone.
 
 ## Roles
 
