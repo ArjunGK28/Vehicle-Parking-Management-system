@@ -69,3 +69,27 @@ CREATE TABLE IF NOT EXISTS parking_slots (
   PRIMARY KEY (id),
   UNIQUE KEY uq_parking_slots_code (code)
 );
+
+
+-- Reservations module (FR-04)
+CREATE TABLE IF NOT EXISTS reservations (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    vehicle_id INT UNSIGNED NOT NULL,
+    slot_id INT UNSIGNED NOT NULL,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    status ENUM('reserved', 'cancelled', 'completed') NOT NULL DEFAULT 'reserved',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_reservations_slot_window (slot_id, start_time, end_time, status),
+    KEY idx_reservations_user (user_id),
+    CONSTRAINT fk_reservations_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reservations_vehicle
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reservations_slot
+        FOREIGN KEY (slot_id) REFERENCES parking_slots(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_reservations_time
+        CHECK (end_time > start_time)
+);
