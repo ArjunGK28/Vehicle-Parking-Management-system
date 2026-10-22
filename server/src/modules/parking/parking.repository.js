@@ -1,0 +1,78 @@
+
+const db = require('../../db');
+
+// Finds a vehicle that belongs to the specified user.
+async function findVehicleById(vehicleId, userId) {
+  const [rows] = await db.query(
+    `SELECT id, user_id, registration_number, type
+     FROM vehicles
+     WHERE id = ? AND user_id = ?
+     LIMIT 1`,
+    [vehicleId, userId],
+  );
+
+  return rows[0] || null;
+}
+
+// Finds a suitable slot that is enabled, not occupied,
+// and not reserved for the current time.
+async function findAvailableSlot(connection, vehicleType) {
+  const [rows] = await connection.query(
+    `SELECT ps.id, ps.code, ps.slot_type AS type
+     FROM parking_slots ps
+     WHERE ps.slot_type = ?
+       AND ps.is_disabled = FALSE
+       AND NOT EXISTS (
+         SELECT 1
+         FROM parking_sessions session
+         WHERE session.slot_id = ps.id
+           AND session.status = 'active'
+       )
+       AND NOT EXISTS (
+         SELECT 1
+         FROM reservations r
+         WHERE r.slot_id = ps.id
+           AND r.status = 'reserved'
+           AND r.start_time <= NOW()
+           AND r.end_time > NOW()
+       )
+     ORDER BY LENGTH(ps.code), ps.code
+     LIMIT 1
+     FOR UPDATE`,
+    [vehicleType],
+  );
+
+  return rows[0] || null;
+}
+
+// Checks whether the vehicle already has an active parking session.
+async function findActiveSessionForVehicle(connection, vehicleId) {
+  const [rows] = await connection.query(
+    `SELECT id, slot_id
+     FROM parking_sessions
+     WHERE vehicle_id = ?
+       AND status = 'active'
+     LIMIT 1`,
+    [vehicleId],
+  );
+
+  return rows[0] || null;
+}
+
+// Creates the active parking session for the assigned vehicle and slot.
+async function createParkingSession(connection, vehicleId, slotId) {
+  const [result] = await connection.query(
+    `INSERT INTO parking_sessions (vehicle_id, slot_id)
+     VALUES (?, ?)`,
+    [vehicleId, slotId],
+  );
+
+  return result.insertId;
+}
+
+module.exports = {
+  findVehicleById,
+  findAvailableSlot,
+  findActiveSessionForVehicle,
+  createParkingSession,
+};

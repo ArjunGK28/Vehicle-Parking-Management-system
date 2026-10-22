@@ -93,3 +93,27 @@ CREATE TABLE IF NOT EXISTS reservations (
     CONSTRAINT chk_reservations_time
         CHECK (end_time > start_time)
 );
+
+
+-- ---------------------------------------------------------------------------
+-- Parking sessions module (shared by FR-06 assignment and FR-07 vehicle entry)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS parking_sessions (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  vehicle_id INT UNSIGNED NOT NULL,
+  slot_id INT UNSIGNED NOT NULL,
+  entry_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  exit_time DATETIME NULL,
+  status ENUM('active', 'completed') NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_parking_sessions_slot_status (slot_id, status),
+  KEY idx_parking_sessions_vehicle_status (vehicle_id, status),
+  CONSTRAINT fk_parking_sessions_vehicle
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_parking_sessions_slot
+    FOREIGN KEY (slot_id) REFERENCES parking_slots(id) ON DELETE RESTRICT,
+  CONSTRAINT chk_parking_sessions_exit_time
+    CHECK (exit_time IS NULL OR exit_time >= entry_time)
+);

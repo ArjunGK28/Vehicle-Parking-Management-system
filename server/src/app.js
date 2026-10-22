@@ -7,6 +7,7 @@ const usersRoutes = require('./modules/users/users.routes');
 const vehiclesRoutes = require('./modules/users/vehicles/vehicles.routes');
 const slotsRoutes = require('./modules/slots/slots.routes');
 const reservationsRoutes = require('./modules/reservations/reservations.routes');
+const parkingRoutes = require('./modules/parking/parking.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
@@ -23,6 +24,7 @@ app.use('/api/auth', usersRoutes);
 app.use('/api/vehicles', vehiclesRoutes);
 app.use('/api/slots', slotsRoutes);
 app.use('/api/reservations', reservationsRoutes);
+app.use('/api/parking', parkingRoutes);
 
 app.use('/api', notFound);
 
