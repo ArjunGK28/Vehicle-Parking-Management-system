@@ -35,4 +35,6 @@ export const api = {
   listSlots: () => request('GET', '/slots'),
   addSlot: (slot) => request('POST', '/slots', slot),
   setSlotDisabled: (id, disabled) => request('PATCH', `/slots/${id}`, { disabled }),
+  listRates: () => request('GET', '/rates'),
+  saveRate: (type, rate) => request('PUT', `/rates/${type}`, rate),
 };
