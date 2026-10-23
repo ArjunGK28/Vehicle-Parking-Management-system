@@ -13,7 +13,7 @@ async function assignSlot(req, res) {
     });
   }
 
-  const session = await service.assignSlot(vehicleId, req.user.id);
+  const session = await service.assignSlot(vehicleId, req.user);
 
   res.status(201).json({
     session,

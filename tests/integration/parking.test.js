@@ -7,6 +7,7 @@ const { createUser, loginAs } = require('../helpers/users');
 
 let driver;
 let admin;
+let attendant;
 let vehicleId;
 
 beforeEach(async () => {
@@ -14,6 +15,11 @@ beforeEach(async () => {
 
   driver = await loginAs(await createUser(ROLES.DRIVER));
   admin = await loginAs(await createUser(ROLES.ADMIN));
+  attendant = await loginAs(
+    await createUser(ROLES.ATTENDANT, {
+      email: 'attendant@example.com',
+    }),
+  );
 
   const vehicleRes = await driver.post('/api/vehicles').send({
     registrationNumber: 'KA01AB1234',
@@ -56,8 +62,9 @@ describe('automatic parking slot assignment (Issue #62)', () => {
     });
 
     const again = await admin.get('/api/slots');
-expect(again.body.slots.find((s) => s.id === suitableSlot.id).status)
-  .toBe('occupied');
+    expect(
+      again.body.slots.find((s) => s.id === suitableSlot.id).status,
+    ).toBe('occupied');
   });
 
   test('returns 409 when no suitable slot is available', async () => {
@@ -121,7 +128,9 @@ expect(again.body.slots.find((s) => s.id === suitableSlot.id).status)
     await addSlot('P-1');
 
     const anotherDriver = await loginAs(
-      await createUser(ROLES.DRIVER, { email: 'another-driver@example.com' }),
+      await createUser(ROLES.DRIVER, {
+        email: 'another-driver@example.com',
+      }),
     );
 
     const otherVehicleRes = await anotherDriver.post('/api/vehicles').send({
@@ -147,9 +156,70 @@ expect(again.body.slots.find((s) => s.id === suitableSlot.id).status)
   });
 
   test('rejects an invalid vehicle ID', async () => {
-    const res = await driver.post('/api/parking/assign').send({ vehicleId: -1 });
+    const res = await driver
+      .post('/api/parking/assign')
+      .send({ vehicleId: -1 });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/vehicleId/i);
+  });
+});
+
+describe('record vehicle entry (Issue #60)', () => {
+  test('allows an attendant to record entry for a registered vehicle', async () => {
+    await addSlot('ENTRY-1');
+
+    const res = await attendant
+      .post('/api/parking/assign')
+      .send({ vehicleId });
+
+    expect(res.status).toBe(201);
+    expect(res.body.session).toMatchObject({
+      vehicleId,
+      slotCode: 'ENTRY-1',
+      status: 'active',
+    });
+  });
+
+  test('records an entry timestamp for the parking session', async () => {
+    await addSlot('ENTRY-2');
+
+    const res = await assign();
+
+    expect(res.status).toBe(201);
+
+    const [rows] = await db.query(
+      `SELECT entry_time, status
+       FROM parking_sessions
+       WHERE id = ?`,
+      [res.body.session.sessionId],
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].entry_time).toBeTruthy();
+    expect(new Date(rows[0].entry_time).getTime()).not.toBeNaN();
+    expect(rows[0].status).toBe('active');
+  });
+
+  test('rejects an unregistered vehicle', async () => {
+    await addSlot('ENTRY-3');
+
+    const res = await driver
+      .post('/api/parking/assign')
+      .send({ vehicleId: 999999 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Vehicle not found');
+  });
+
+  test('records vehicle entry within three seconds', async () => {
+    await addSlot('ENTRY-4');
+
+    const start = Date.now();
+    const res = await assign();
+    const duration = Date.now() - start;
+
+    expect(res.status).toBe(201);
+    expect(duration).toBeLessThan(3000);
   });
 });

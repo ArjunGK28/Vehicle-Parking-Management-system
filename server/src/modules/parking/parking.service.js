@@ -3,8 +3,13 @@ const db = require('../../db');
 const { HttpError } = require('../../errors');
 const parking = require('./parking.repository');
 
-async function assignSlot(vehicleId, userId) {
-  const vehicle = await parking.findVehicleById(vehicleId, userId);
+async function assignSlot(vehicleId, user) {
+  const isAttendant = user.role === 'attendant';
+
+  const vehicle = await parking.findVehicleById(
+    vehicleId,
+    isAttendant ? null : user.id,
+  );
 
   if (!vehicle) {
     throw new HttpError(404, 'Vehicle not found');
