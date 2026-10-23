@@ -166,6 +166,37 @@ describe('automatic parking slot assignment (Issue #62)', () => {
 });
 
 describe('record vehicle entry (Issue #60)', () => {
+
+  test('allows an attendant to record entry for another driver vehicle', async () => {
+    const anotherDriver = await loginAs(
+      await createUser(ROLES.DRIVER, {
+        email: 'second-driver@example.com',
+      }),
+    );
+
+    const vehicleRes = await anotherDriver.post('/api/vehicles').send({
+      registrationNumber: 'KA04GH3456',
+      type: 'four_wheeler',
+      model: 'Another Car',
+      colour: 'Blue',
+    });
+
+    expect(vehicleRes.status).toBe(201);
+
+    await addSlot('ENT-OTHER');
+
+    const res = await attendant
+      .post('/api/parking/assign')
+      .send({ vehicleId: vehicleRes.body.vehicle.id });
+
+    expect(res.status).toBe(201);
+    expect(res.body.session).toMatchObject({
+      vehicleId: vehicleRes.body.vehicle.id,
+      slotCode: 'ENT-OTHER',
+      status: 'active',
+    });
+  });
+
   test('allows an attendant to record entry for a registered vehicle', async () => {
     await addSlot('ENTRY-1');
 
