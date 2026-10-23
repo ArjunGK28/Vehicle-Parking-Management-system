@@ -192,3 +192,20 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.rate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.rate-card {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  align-content: start;
+}
+.rate-card h3 { font-size: 1rem; margin: 0; }
+.rate-card .alert { margin: 0; }
+.small-text { margin: 0; font-size: 0.85rem; }
