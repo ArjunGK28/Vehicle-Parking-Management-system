@@ -117,3 +117,27 @@ CREATE TABLE IF NOT EXISTS parking_sessions (
   CONSTRAINT chk_parking_sessions_exit_time
     CHECK (exit_time IS NULL OR exit_time >= entry_time)
 );
+
+
+-- ---------------------------------------------------------------------------
+-- Rates module (FR-12, FR-09)
+-- ---------------------------------------------------------------------------
+
+-- One rate per slot type, set by the administrator. Amounts are whole rupees.
+-- Time is billed in steps of billing_step_minutes, rounded up (UC-09 rounding rule).
+CREATE TABLE IF NOT EXISTS parking_rates (
+  slot_type            ENUM('two_wheeler', 'four_wheeler') NOT NULL,
+  hourly_rate          INT UNSIGNED      NOT NULL,
+  minimum_fee          INT UNSIGNED      NOT NULL,
+  billing_step_minutes SMALLINT UNSIGNED NOT NULL,
+  updated_by           INT UNSIGNED      NULL,
+  updated_at           TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (slot_type),
+  CONSTRAINT fk_parking_rates_user FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+-- Starting rates, so fees work before an administrator changes anything.
+-- INSERT IGNORE keeps rates an administrator has already set.
+INSERT IGNORE INTO parking_rates (slot_type, hourly_rate, minimum_fee, billing_step_minutes) VALUES
+  ('four_wheeler', 20, 10, 15),
+  ('two_wheeler', 10, 5, 15);
