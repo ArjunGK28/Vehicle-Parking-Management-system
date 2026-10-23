@@ -1,15 +1,19 @@
 
 const db = require('../../db');
 
-// Finds a vehicle that belongs to the specified user.
-async function findVehicleById(vehicleId, userId) {
-  const [rows] = await db.query(
-    `SELECT id, user_id, registration_number, type
-     FROM vehicles
-     WHERE id = ? AND user_id = ?
-     LIMIT 1`,
-    [vehicleId, userId],
-  );
+async function findVehicleById(vehicleId, userId = null) {
+  const query = userId
+    ? `SELECT id, user_id, registration_number, type
+       FROM vehicles
+       WHERE id = ? AND user_id = ?
+       LIMIT 1`
+    : `SELECT id, user_id, registration_number, type
+       FROM vehicles
+       WHERE id = ?
+       LIMIT 1`;
+
+  const params = userId ? [vehicleId, userId] : [vehicleId];
+  const [rows] = await db.query(query, params);
 
   return rows[0] || null;
 }
