@@ -70,11 +70,22 @@ async function logout(token) {
 }
 
 // Returns the logged-in user for a session token, or null.
-async function getUserForToken(token) {
+// NFR-14: a session idle for config.session.idleTimeoutMinutes or more is deleted and refused.
+// A normal request restarts the idle clock; keepAlive: false (background refresh) does not.
+async function getUserForToken(token, { keepAlive = true } = {}) {
   if (!token) return null;
   const session = await sessions.findByTokenHash(hashToken(token));
   if (!session) return null;
-  return users.findById(session.userId);
+
+  if (Number(session.idleSeconds) >= config.session.idleTimeoutMinutes * 60) {
+    await sessions.deleteById(session.id);
+    return null;
+  }
+
+  const user = await users.findById(session.userId);
+  if (!user) return null;
+  if (keepAlive) await sessions.touch(session.id);
+  return user;
 }
 
 module.exports = { register, login, logout, getUserForToken };

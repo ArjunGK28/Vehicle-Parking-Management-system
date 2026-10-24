@@ -30,4 +30,8 @@ module.exports = {
     maxAttempts: 5,
     durationMinutes: Number(process.env.LOCKOUT_MINUTES) || 15,
   },
+  // NFR-14: a session ends after this many minutes without activity.
+  session: {
+    idleTimeoutMinutes: Number(process.env.SESSION_IDLE_MINUTES) || 15,
+  },
 };

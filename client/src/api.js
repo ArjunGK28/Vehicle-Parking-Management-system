@@ -8,13 +8,22 @@ export class ApiError extends Error {
   }
 }
 
-async function request(method, path, body) {
+// Fired when a protected call is refused because the session ended (NFR-14).
+export const SESSION_EXPIRED_EVENT = 'session-expired';
+
+// options.background: true marks a refresh the page does by itself. The server then
+// does not count it as activity, so an idle session still expires after 15 minutes.
+async function request(method, path, body, { background = false } = {}) {
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (background) headers['X-Background-Refresh'] = 'true';
+
   let res;
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -23,7 +32,13 @@ async function request(method, path, body) {
 
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data.error || 'Request failed', data.fields);
+  if (!res.ok) {
+    // A 401 on anything except the login calls means the session has ended.
+    if (res.status === 401 && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    throw new ApiError(res.status, data.error || 'Request failed', data.fields);
+  }
   return data;
 }
 

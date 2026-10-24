@@ -42,7 +42,14 @@ export default function LoginPage() {
   return (
     <main className="auth-card">
       <h1>Log in</h1>
-      {registered.message && !formError && <p className="alert alert-success" role="status">{registered.message}</p>}
+      {registered.message && !formError && (
+        <p
+          className={`alert ${registered.expired ? 'alert-error' : 'alert-success'}`}
+          role={registered.expired ? 'alert' : 'status'}
+        >
+          {registered.message}
+        </p>
+      )}
       {formError && <p className="alert alert-error" role="alert">{formError}</p>}
       <form onSubmit={submit} noValidate>
         <Field label="Email" name="email" type="email" value={form.email} onChange={update} error={errors.email} autoComplete="email" />
