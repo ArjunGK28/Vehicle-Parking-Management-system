@@ -47,7 +47,13 @@ export const api = {
   login: (credentials) => request('POST', '/auth/login', credentials),
   logout: () => request('POST', '/auth/logout'),
   me: () => request('GET', '/auth/me'),
-  listSlots: () => request('GET', '/slots'),
+  // filters: { status, type }; empty values are left out. Returns { slots, counts }.
+  listSlots: (filters = {}, options) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+    const query = params.toString();
+    return request('GET', `/slots${query ? `?${query}` : ''}`, undefined, options);
+  },
   addSlot: (slot) => request('POST', '/slots', slot),
   setSlotDisabled: (id, disabled) => request('PATCH', `/slots/${id}`, { disabled }),
   listRates: () => request('GET', '/rates'),

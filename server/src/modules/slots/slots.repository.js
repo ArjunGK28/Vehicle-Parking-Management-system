@@ -1,7 +1,11 @@
 const db = require('../../db');
 
-// Status is Unavailable when an admin has disabled the slot. Occupied and Reserved
-// join in with parking sessions (#60) and reservations (#58).
+// Status is worked out live, so it is right the moment a session or reservation changes (FR-03):
+//   Unavailable: an admin disabled the slot
+//   Occupied:    a vehicle has an active parking session in it
+//   Reserved:    a reservation covers the current time
+//   Available:   none of the above
+// The reserved rule matches parking.repository.findAvailableSlot.
 const SLOT_COLUMNS = `
   id, code, slot_type AS type,
   CASE
@@ -12,6 +16,14 @@ const SLOT_COLUMNS = `
       WHERE session.slot_id = parking_slots.id
         AND session.status = 'active'
     ) THEN 'occupied'
+    WHEN EXISTS (
+      SELECT 1
+      FROM reservations r
+      WHERE r.slot_id = parking_slots.id
+        AND r.status = 'reserved'
+        AND r.start_time <= NOW()
+        AND r.end_time > NOW()
+    ) THEN 'reserved'
     ELSE 'available'
   END AS status,
   created_at AS createdAt`;

@@ -28,9 +28,11 @@ async function create(userId, body) {
     throw new HttpError(404, 'Parking slot not found');
   }
 
- if (slot.status !== 'available') {
-  throw new HttpError(409, 'Parking slot is unavailable');
-}
+  // A slot that is reserved right now can still be booked for another time;
+  // overlapping bookings are caught by the conflict check below.
+  if (slot.status === 'unavailable' || slot.status === 'occupied') {
+    throw new HttpError(409, 'Parking slot is unavailable');
+  }
 
   const start = new Date(startTime);
   const end = new Date(endTime);
