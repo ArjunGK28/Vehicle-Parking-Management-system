@@ -110,11 +110,13 @@ describe('disabling a slot', () => {
 });
 
 describe('only administrators manage slots (NFR-11)', () => {
+  // Viewing the list is open to every logged-in role (FR-03, see slot-availability.test.js).
   const routes = [
     ['get', '/api/slots'],
     ['post', '/api/slots'],
     ['patch', '/api/slots/1'],
   ];
+  const adminOnlyRoutes = routes.filter(([method]) => method !== 'get');
 
   test.each(routes)('%s %s without a session gives 401', async (method, path) => {
     const res = await request(app)[method](path).send({ code: 'P-1', type: 'four_wheeler', disabled: true });
@@ -125,12 +127,20 @@ describe('only administrators manage slots (NFR-11)', () => {
     const slot = await addSlot('P-1');
     const agent = await loginAs(await createUser(role, { email: `${role}-slots@example.com` }));
 
-    for (const [method, path] of routes) {
+    for (const [method, path] of adminOnlyRoutes) {
       const res = await agent[method](path.replace('/1', `/${slot.id}`)).send({ code: 'P-2', type: 'four_wheeler', disabled: true });
       expect(res.status).toBe(403);
     }
 
     const list = await admin.get('/api/slots');
     expect(list.body.slots).toEqual([expect.objectContaining({ code: 'P-1', status: 'available' })]);
+  });
+
+  test.each([ROLES.DRIVER, ROLES.ATTENDANT])('a %s may view the slot list', async (role) => {
+    await addSlot('P-1');
+    const agent = await loginAs(await createUser(role, { email: `${role}-view@example.com` }));
+    const res = await agent.get('/api/slots');
+    expect(res.status).toBe(200);
+    expect(res.body.slots.map((s) => s.code)).toEqual(['P-1']);
   });
 });

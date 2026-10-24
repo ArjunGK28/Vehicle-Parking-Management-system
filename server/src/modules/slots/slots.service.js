@@ -1,8 +1,22 @@
 const { HttpError } = require('../../errors');
 const slots = require('./slots.repository');
+const { ALL_SLOT_STATUSES } = require('./slotStatuses');
 
 async function list() {
   return slots.findAll();
+}
+
+// FR-03: the slots to show, optionally filtered, plus how many slots are in each
+// status. The counts always cover every slot, so the totals stay put while filtering.
+async function listWithCounts({ status = null, type = null } = {}) {
+  const all = await slots.findAll();
+
+  const counts = { total: all.length };
+  for (const name of ALL_SLOT_STATUSES) counts[name] = 0;
+  for (const slot of all) counts[slot.status] += 1;
+
+  const visible = all.filter((slot) => (!status || slot.status === status) && (!type || slot.type === type));
+  return { slots: visible, counts };
 }
 
 // UC-12: the admin adds a slot. Codes are unique, so P-30 cannot be added twice.
@@ -30,4 +44,4 @@ async function listAssignable(type) {
   return slots.findAssignable(type);
 }
 
-module.exports = { list, create, setDisabled, listAssignable };
+module.exports = { list, listWithCounts, create, setDisabled, listAssignable };

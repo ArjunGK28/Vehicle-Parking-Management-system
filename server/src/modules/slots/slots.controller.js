@@ -1,8 +1,16 @@
 const service = require('./slots.service');
-const { validateNewSlot, validateSlotUpdate, parseSlotId } = require('./slots.validation');
+const {
+  validateNewSlot,
+  validateSlotUpdate,
+  validateSlotFilter,
+  parseSlotId,
+} = require('./slots.validation');
 
+// FR-03: { slots, counts }. Never cached, so every refresh shows the latest status.
 async function list(req, res) {
-  res.json({ slots: await service.list() });
+  const filters = validateSlotFilter(req.query);
+  res.set('Cache-Control', 'no-store');
+  res.json(await service.listWithCounts(filters));
 }
 
 async function create(req, res) {

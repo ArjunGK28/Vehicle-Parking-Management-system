@@ -10,3 +10,6 @@ export const SLOT_STATUS_LABELS = {
   reserved: 'Reserved',
   unavailable: 'Unavailable',
 };
+
+// Order used for the summary and the status filter.
+export const SLOT_STATUS_ORDER = ['available', 'occupied', 'reserved', 'unavailable'];
