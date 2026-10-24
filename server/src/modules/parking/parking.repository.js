@@ -74,9 +74,33 @@ async function createParkingSession(connection, vehicleId, slotId) {
   return result.insertId;
 }
 
+// FR-07: the vehicle with this registration number and its current active session.
+// Always read from the table, so a slot change is seen straight away.
+async function findActiveSessionByRegistration(registrationNumber) {
+  const [rows] = await db.query(
+    `SELECT s.id AS sessionId,
+            s.slot_id AS slotId,
+            s.entry_time AS entryTime,
+            v.id AS vehicleId,
+            v.registration_number AS registrationNumber,
+            v.type AS vehicleType,
+            v.model,
+            v.colour
+     FROM vehicles v
+     JOIN parking_sessions s ON s.vehicle_id = v.id AND s.status = 'active'
+     WHERE v.registration_number = ?
+     ORDER BY s.entry_time DESC, s.id DESC
+     LIMIT 1`,
+    [registrationNumber],
+  );
+
+  return rows[0] || null;
+}
+
 module.exports = {
   findVehicleById,
   findAvailableSlot,
   findActiveSessionForVehicle,
   createParkingSession,
+  findActiveSessionByRegistration,
 };

@@ -58,4 +58,7 @@ export const api = {
   setSlotDisabled: (id, disabled) => request('PATCH', `/slots/${id}`, { disabled }),
   listRates: () => request('GET', '/rates'),
   saveRate: (type, rate) => request('PUT', `/rates/${type}`, rate),
+  // FR-07: attendants and admins find where a vehicle is parked.
+  locateVehicle: (registrationNumber) =>
+    request('GET', `/parking/locate?registrationNumber=${encodeURIComponent(registrationNumber)}`),
 };
