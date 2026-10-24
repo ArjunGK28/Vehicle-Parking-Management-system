@@ -2,6 +2,7 @@
 const db = require('../../db');
 const { HttpError } = require('../../errors');
 const parking = require('./parking.repository');
+const slots = require('../slots/slots.repository');
 
 async function assignSlot(vehicleId, user) {
   const isAttendant = user.role === 'attendant';
@@ -66,4 +67,29 @@ async function assignSlot(vehicleId, user) {
   }
 }
 
-module.exports = { assignSlot };
+// FR-07 / UC-07: where is this vehicle parked right now?
+// A vehicle that is not registered and one that is not parked get the same answer,
+// so the lookup does not reveal which registration numbers exist.
+async function locate({ registrationNumber }) {
+  const found = await parking.findActiveSessionByRegistration(registrationNumber);
+  if (!found) {
+    throw new HttpError(404, 'No active parking session found for this vehicle');
+  }
+
+  // The slot's status comes from the same rules as the availability list (FR-03).
+  const slot = await slots.findById(found.slotId);
+
+  return {
+    vehicle: {
+      id: found.vehicleId,
+      registrationNumber: found.registrationNumber,
+      type: found.vehicleType,
+      model: found.model,
+      colour: found.colour,
+    },
+    session: { id: found.sessionId, status: 'active', entryTime: found.entryTime },
+    slot: { id: slot.id, code: slot.code, type: slot.type, status: slot.status },
+  };
+}
+
+module.exports = { assignSlot, locate };

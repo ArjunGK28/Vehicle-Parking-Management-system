@@ -16,4 +16,11 @@ router.post(
   controller.assignSlot,
 );
 
+// Attendants and administrators can find where a vehicle is parked (FR-07, NFR-11).
+router.get(
+  '/locate',
+  allowRoles(ROLES.ATTENDANT, ROLES.ADMIN),
+  controller.locate,
+);
+
 module.exports = router;
