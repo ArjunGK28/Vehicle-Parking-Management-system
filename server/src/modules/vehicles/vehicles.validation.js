@@ -1,4 +1,4 @@
-const { HttpError } = require('../../../errors');
+const { HttpError } = require('../../errors');
 
 function asText(value) {
   return typeof value === 'string' ? value.trim() : '';

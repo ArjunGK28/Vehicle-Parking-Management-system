@@ -1,7 +1,7 @@
 
 const { HttpError } = require('../../errors');
 const reservations = require('./reservations.repository');
-const vehicles = require('../users/vehicles/vehicles.repository');
+const vehicles = require('../vehicles/vehicles.repository');
 const slots = require('../slots/slots.repository');
 
 async function list(userId) {

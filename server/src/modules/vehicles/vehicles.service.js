@@ -1,5 +1,5 @@
 
-const { HttpError } = require('../../../errors');
+const { HttpError } = require('../../errors');
 const vehicles = require('./vehicles.repository');
 const { validateVehicle } = require('./vehicles.validation');
 

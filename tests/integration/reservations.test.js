@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../../server/src/app');
 const { ROLES } = require('../../server/src/modules/users/roles');
-const vehicles = require('../../server/src/modules/users/vehicles/vehicles.repository');
+const vehicles = require('../../server/src/modules/vehicles/vehicles.repository');
 const { db, clearTables } = require('../helpers/db');
 const { createUser, loginAs } = require('../helpers/users');
 
