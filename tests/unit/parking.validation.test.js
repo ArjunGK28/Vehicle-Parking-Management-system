@@ -15,8 +15,8 @@ describe('validateLocateQuery (FR-07)', () => {
     expect(validateLocateQuery({ registrationNumber: '  ka01ab1234 ' })).toEqual({ registrationNumber: 'KA01AB1234' });
   });
 
-  test('accepts spaces and hyphens inside the number', () => {
-    expect(validateLocateQuery({ registrationNumber: 'KA-01 AB-1234' }).registrationNumber).toBe('KA-01 AB-1234');
+  test('removes spaces and hyphens, as vehicles are stored', () => {
+    expect(validateLocateQuery({ registrationNumber: 'KA-01 AB-1234' }).registrationNumber).toBe('KA01AB1234');
   });
 
   test.each([undefined, '', '   '])('asks for a registration number when it is %p', (registrationNumber) => {

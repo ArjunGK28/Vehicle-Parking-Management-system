@@ -1,12 +1,14 @@
 
 const { Router } = require('express');
-const authenticate = require('../../../middleware/authenticate');
+const { allowRoles } = require('../../middleware/requireRole');
+const { ROLES } = require('../users/roles');
 const controller = require('./vehicles.controller');
 
 const router = Router();
 
-// All vehicle routes require an authenticated user.
-router.use(authenticate);
+// Drivers manage their own vehicles (FR-02). Staff look vehicles up through
+// parking (locate, entry) and administrators through user management (#28).
+router.use(allowRoles(ROLES.DRIVER));
 
 router.get('/', controller.list);
 router.get('/:id', controller.get);

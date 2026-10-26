@@ -1,11 +1,11 @@
 
-const { HttpError } = require('../../../errors');
+const { HttpError } = require('../../errors');
 const vehicles = require('./vehicles.repository');
 const { validateVehicle } = require('./vehicles.validation');
 
 function handleDatabaseError(err) {
   if (err.code === 'ER_DUP_ENTRY') {
-    throw new HttpError(409, 'This registration number is already registered', {
+    throw new HttpError(409, 'This vehicle already exists', {
       registrationNumber: 'Registration number is already in use',
     });
   }
