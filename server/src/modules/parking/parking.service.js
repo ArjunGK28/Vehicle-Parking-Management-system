@@ -16,6 +16,25 @@ async function assignSlot(vehicleId, user) {
     throw new HttpError(404, 'Vehicle not found');
   }
 
+  return startSession(vehicle);
+}
+
+// FR-05 / UC-05: the attendant types the registration number at the gate (#84).
+// registrationNumber arrives normalised by cleanRegistration.
+async function enterVehicle(registrationNumber) {
+  const vehicle = await parking.findVehicleByRegistration(registrationNumber);
+
+  if (!vehicle) {
+    throw new HttpError(404, 'Vehicle not found');
+  }
+
+  return startSession(vehicle);
+}
+
+// Starts an active session in a free slot of the vehicle's type (FR-06), shared by
+// assignSlot and enterVehicle so both follow the same rules (DR-02, DR-07, DR-08).
+async function startSession(vehicle) {
+  const vehicleId = vehicle.id;
   const connection = await db.getConnection();
 
   try {
@@ -47,6 +66,7 @@ async function assignSlot(vehicleId, user) {
       vehicleId,
       slot.id,
     );
+    const entryTime = await parking.findSessionEntryTime(connection, sessionId);
 
     await connection.commit();
 
@@ -57,6 +77,7 @@ async function assignSlot(vehicleId, user) {
       slotId: slot.id,
       slotCode: slot.code,
       slotType: slot.type,
+      entryTime,
       status: 'active',
     };
   } catch (err) {
@@ -92,4 +113,4 @@ async function locate({ registrationNumber }) {
   };
 }
 
-module.exports = { assignSlot, locate };
+module.exports = { assignSlot, enterVehicle, locate };

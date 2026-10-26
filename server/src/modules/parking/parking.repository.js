@@ -18,6 +18,29 @@ async function findVehicleById(vehicleId, userId = null) {
   return rows[0] || null;
 }
 
+// FR-05: the vehicle with this (normalised) registration number, whoever owns it.
+async function findVehicleByRegistration(registrationNumber) {
+  const [rows] = await db.query(
+    `SELECT id, user_id, registration_number, type
+     FROM vehicles
+     WHERE registration_number = ?
+     LIMIT 1`,
+    [registrationNumber],
+  );
+
+  return rows[0] || null;
+}
+
+// The entry time MySQL recorded for a new session (UT-05_01).
+async function findSessionEntryTime(connection, sessionId) {
+  const [rows] = await connection.query(
+    'SELECT entry_time AS entryTime FROM parking_sessions WHERE id = ?',
+    [sessionId],
+  );
+
+  return rows[0].entryTime;
+}
+
 // Finds a suitable slot that is enabled, not occupied,
 // and not reserved for the current time.
 async function findAvailableSlot(connection, vehicleType) {
@@ -99,6 +122,8 @@ async function findActiveSessionByRegistration(registrationNumber) {
 
 module.exports = {
   findVehicleById,
+  findVehicleByRegistration,
+  findSessionEntryTime,
   findAvailableSlot,
   findActiveSessionForVehicle,
   createParkingSession,
