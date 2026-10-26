@@ -61,4 +61,6 @@ export const api = {
   // FR-07: attendants and admins find where a vehicle is parked.
   locateVehicle: (registrationNumber) =>
     request('GET', `/parking/locate?registrationNumber=${encodeURIComponent(registrationNumber)}`),
+  // FR-05: the attendant records entry by registration number.
+  enterVehicle: (registrationNumber) => request('POST', '/parking/entry', { registrationNumber }),
 };

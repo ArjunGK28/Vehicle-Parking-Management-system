@@ -16,6 +16,13 @@ router.post(
   controller.assignSlot,
 );
 
+// Attendants record entry at the gate by registration number (FR-05, #84).
+router.post(
+  '/entry',
+  allowRoles(ROLES.ATTENDANT),
+  controller.enter,
+);
+
 // Attendants and administrators can find where a vehicle is parked (FR-07, NFR-11).
 router.get(
   '/locate',
