@@ -1,5 +1,6 @@
 
 const service = require('./vehicles.service');
+const { parseVehicleId } = require('./vehicles.validation');
 
 async function list(req, res) {
   const vehicles = await service.list(req.user.id);
@@ -8,7 +9,7 @@ async function list(req, res) {
 
 async function get(req, res) {
   const vehicle = await service.get(
-    req.params.id,
+    parseVehicleId(req.params.id),
     req.user.id
   );
   res.json({ vehicle });
@@ -27,7 +28,7 @@ async function create(req, res) {
 
 async function update(req, res) {
   const vehicle = await service.update(
-    req.params.id,
+    parseVehicleId(req.params.id),
     req.user.id,
     req.body
   );
@@ -38,7 +39,7 @@ async function update(req, res) {
 }
 
 async function remove(req, res) {
-  await service.remove(req.params.id, req.user.id);
+  await service.remove(parseVehicleId(req.params.id), req.user.id);
   res.status(204).end();
 }
 
