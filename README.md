@@ -106,6 +106,15 @@ Add new tables to `database/schema.sql`. To rebuild your local dev database from
 ```
 npm run db:reset
 ```
+Changing an existing table needs a migration file in `database/migrations/`. Run each one
+once on an existing dev database (a fresh `db:reset` already includes them):
+
+- `001-login-lockout.sql`: login lockout columns on `users`
+- `002-session-fees.sql`: fee and payment status columns on `parking_sessions` (#66, #68)
+
+```
+Get-Content database\migrations\002-session-fees.sql | mysql -u parking_app -p parking_dev
+```
 
 ## Project layout
 

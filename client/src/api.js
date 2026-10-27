@@ -63,6 +63,8 @@ export const api = {
     request('GET', `/parking/locate?registrationNumber=${encodeURIComponent(registrationNumber)}`),
   // FR-05: the attendant records entry by registration number.
   enterVehicle: (registrationNumber) => request('POST', '/parking/entry', { registrationNumber }),
+  // FR-08 / FR-09: the attendant records exit; the response carries the fee.
+  exitVehicle: (registrationNumber) => request('POST', '/parking/exit', { registrationNumber }),
   // FR-12: administrators manage users and their vehicles. filter: { role, search }.
   listUsers: (filter = {}) => {
     const params = new URLSearchParams();

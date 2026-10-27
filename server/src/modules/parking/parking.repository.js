@@ -151,7 +151,82 @@ async function findActiveSessionByRegistration(registrationNumber) {
   return rows[0] || null;
 }
 
+// FR-08: locks the vehicle with this registration number, the same row entry locks
+// (startSession). Two exits, or an entry and an exit, for one vehicle then run one
+// after the other instead of deadlocking on the session row.
+async function lockVehicleByRegistration(connection, registrationNumber) {
+  const [rows] = await connection.query(
+    'SELECT id FROM vehicles WHERE registration_number = ? FOR UPDATE',
+    [registrationNumber],
+  );
+
+  return rows[0] ? rows[0].id : null;
+}
+
+// FR-08: the vehicle's active session with its slot. Read after the vehicle row is
+// locked, so a second exit sees the session the first one completed (DR-04, DR-10).
+async function findActiveSessionForExit(connection, vehicleId) {
+  const [rows] = await connection.query(
+    `SELECT s.id,
+            s.vehicle_id AS vehicleId,
+            v.registration_number AS registrationNumber,
+            s.slot_id AS slotId,
+            ps.code AS slotCode,
+            ps.slot_type AS slotType,
+            s.entry_time AS entryTime
+     FROM parking_sessions s
+     JOIN vehicles v ON v.id = s.vehicle_id
+     JOIN parking_slots ps ON ps.id = s.slot_id
+     WHERE s.vehicle_id = ?
+       AND s.status = 'active'
+     ORDER BY s.id DESC
+     LIMIT 1`,
+    [vehicleId],
+  );
+
+  return rows[0] || null;
+}
+
+// FR-08: the exit time (the given one, or NOW()) and the stay in seconds, both worked
+// out by MySQL so there are no time-zone differences between Node and the database.
+async function findExitTimes(connection, sessionId, exitTime) {
+  const [rows] = await connection.query(
+    `SELECT DATE_FORMAT(t.exit_time, '%Y-%m-%d %H:%i:%s') AS exitTime,
+            TIMESTAMPDIFF(SECOND, s.entry_time, t.exit_time) AS durationSeconds,
+            t.exit_time > NOW() AS isFuture
+     FROM parking_sessions s
+     CROSS JOIN (SELECT COALESCE(CAST(? AS DATETIME), NOW()) AS exit_time) t
+     WHERE s.id = ?`,
+    [exitTime, sessionId],
+  );
+
+  const row = rows[0];
+  return {
+    exitTime: row.exitTime,
+    durationSeconds: Number(row.durationSeconds),
+    isFuture: Number(row.isFuture) === 1,
+  };
+}
+
+// FR-08 / FR-09: completes the session with its exit time and fee.
+async function completeSession(connection, sessionId, { exitTime, feeAmount, billedMinutes }) {
+  await connection.query(
+    `UPDATE parking_sessions
+     SET status = 'completed',
+         exit_time = ?,
+         fee_amount = ?,
+         billed_minutes = ?
+     WHERE id = ?
+       AND status = 'active'`,
+    [exitTime, feeAmount, billedMinutes, sessionId],
+  );
+}
+
 module.exports = {
+  lockVehicleByRegistration,
+  findActiveSessionForExit,
+  findExitTimes,
+  completeSession,
   findVehicleById,
   findVehicleByRegistration,
   findSessionEntryTime,

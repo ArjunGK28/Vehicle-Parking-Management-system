@@ -2,6 +2,7 @@ const db = require('../../db');
 const { HttpError } = require('../../errors');
 const parking = require('./parking.repository');
 const slots = require('../slots/slots.repository');
+const rates = require('../rates/rates.service');
 
 async function assignSlot(vehicleId, user) {
   const isAttendant = user.role === 'attendant';
@@ -117,4 +118,72 @@ async function locate({ registrationNumber }) {
   };
 }
 
-module.exports = { assignSlot, enterVehicle, locate };
+// FR-08 / UC-08: the attendant records exit (#66). The fee is calculated before the
+// session is completed (FR-09, #68). The slot is free again straight away, because
+// availability only counts active sessions (SYS-12).
+// No route edits a session, and a completed session is no longer active, so a second
+// exit gets the DR-04 404 below; that is how DR-10 is kept.
+async function exitVehicle({ registrationNumber, exitTime }) {
+  const connection = await db.getConnection();
+
+  try {
+    // Like startSession: READ COMMITTED lets the read below see a session that another
+    // exit completed while this one waited for the vehicle lock.
+    await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+    await connection.beginTransaction();
+
+    const vehicleId = await parking.lockVehicleByRegistration(connection, registrationNumber);
+    const session = vehicleId
+      ? await parking.findActiveSessionForExit(connection, vehicleId)
+      : null;
+    if (!session) {
+      throw new HttpError(404, 'No active parking session found for this vehicle');
+    }
+
+    const times = await parking.findExitTimes(connection, session.id, exitTime);
+
+    // DR-09
+    if (times.durationSeconds < 0) {
+      throw new HttpError(400, 'Please correct the highlighted fields', {
+        exitTime: 'Exit time cannot be before the entry time',
+      });
+    }
+    if (times.isFuture) {
+      throw new HttpError(400, 'Please correct the highlighted fields', {
+        exitTime: 'Exit time cannot be in the future',
+      });
+    }
+
+    const fee = await rates.feeFor(session.slotType, times.durationSeconds);
+
+    await parking.completeSession(connection, session.id, {
+      exitTime: times.exitTime,
+      feeAmount: fee.amount,
+      billedMinutes: fee.billedMinutes,
+    });
+
+    await connection.commit();
+
+    return {
+      id: session.id,
+      vehicleId: session.vehicleId,
+      registrationNumber: session.registrationNumber,
+      slotId: session.slotId,
+      slotCode: session.slotCode,
+      slotType: session.slotType,
+      entryTime: session.entryTime,
+      exitTime: times.exitTime,
+      billedMinutes: fee.billedMinutes,
+      fee: fee.amount,
+      paymentStatus: 'unpaid',
+      status: 'completed',
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+module.exports = { assignSlot, enterVehicle, exitVehicle, locate };
