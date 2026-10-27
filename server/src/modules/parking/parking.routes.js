@@ -1,4 +1,3 @@
-
 const { Router } = require('express');
 const authenticate = require('../../middleware/authenticate');
 const { allowRoles } = require('../../middleware/requireRole');
@@ -21,6 +20,13 @@ router.post(
   '/entry',
   allowRoles(ROLES.ATTENDANT),
   controller.enter,
+);
+
+// Attendants and administrators record exit; the fee is calculated on exit (FR-08, FR-09, #66, #68).
+router.post(
+  '/exit',
+  allowRoles(ROLES.ATTENDANT, ROLES.ADMIN),
+  controller.exit,
 );
 
 // Attendants and administrators can find where a vehicle is parked (FR-07, NFR-11).

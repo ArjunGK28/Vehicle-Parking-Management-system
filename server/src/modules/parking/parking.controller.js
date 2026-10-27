@@ -1,6 +1,5 @@
-
 const service = require('./parking.service');
-const { validateLocateQuery, cleanRegistration } = require('./parking.validation');
+const { validateLocateQuery, cleanRegistration, validateExit } = require('./parking.validation');
 
 async function assignSlot(req, res) {
   const { vehicleId } = req.body;
@@ -33,6 +32,17 @@ async function enter(req, res) {
   });
 }
 
+// FR-08 / FR-09: the attendant records exit; the response carries the fee (#66, #68).
+async function exit(req, res) {
+  const input = validateExit(req.body || {});
+  const session = await service.exitVehicle(input);
+
+  res.json({
+    session,
+    message: `Vehicle ${session.registrationNumber} has exited slot ${session.slotCode}. Fee: ₹${session.fee}.`,
+  });
+}
+
 // FR-07: never cached, so the answer always shows the vehicle's latest slot.
 async function locate(req, res) {
   const query = validateLocateQuery(req.query);
@@ -45,4 +55,4 @@ async function locate(req, res) {
   });
 }
 
-module.exports = { assignSlot, enter, locate };
+module.exports = { assignSlot, enter, exit, locate };
