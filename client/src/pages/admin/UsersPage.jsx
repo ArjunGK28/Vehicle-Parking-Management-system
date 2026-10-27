@@ -37,8 +37,10 @@ export default function UsersPage() {
     return () => clearTimeout(timer);
   }, [filter]);
 
+  // A new filter closes any open vehicle list, so it never shows a stale list.
   function updateFilter(e) {
     setFilter({ ...filter, [e.target.name]: e.target.value });
+    setOpenUserId(null);
   }
 
   function updateForm(e) {
@@ -147,12 +149,12 @@ export default function UsersPage() {
         {users?.length === 0 && <p className="muted">No users match.</p>}
         {users?.length > 0 && (
           <div className="table-scroll">
-            <table className="data-table">
+            <table className="data-table users-table">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Role</th>
+                  <th scope="col" className="hide-narrow">Email</th>
+                  <th scope="col" className="hide-narrow">Role</th>
                   <th scope="col">Vehicles</th>
                   <th scope="col"><span className="visually-hidden">Action</span></th>
                 </tr>
@@ -161,9 +163,14 @@ export default function UsersPage() {
                 {users.map((user) => (
                   <Fragment key={user.id}>
                     <tr>
-                      <td><strong>{user.name}</strong></td>
-                      <td>{user.email}</td>
-                      <td><span className="badge">{ROLE_LABELS[user.role] || user.role}</span></td>
+                      <td>
+                        <strong>{user.name}</strong>
+                        <span className="muted small-text show-narrow">
+                          {user.email} · {ROLE_LABELS[user.role] || user.role}
+                        </span>
+                      </td>
+                      <td className="hide-narrow">{user.email}</td>
+                      <td className="hide-narrow"><span className="badge">{ROLE_LABELS[user.role] || user.role}</span></td>
                       <td>
                         {user.role === ROLES.DRIVER ? (
                           <button
