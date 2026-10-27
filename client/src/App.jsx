@@ -12,6 +12,7 @@ import RatesPage from './pages/admin/RatesPage.jsx';
 import SlotAvailabilityPage from './pages/slots/SlotAvailabilityPage.jsx';
 import LocateVehiclePage from './pages/staff/LocateVehiclePage.jsx';
 import VehicleEntryPage from './pages/attendant/VehicleEntryPage.jsx';
+import VehicleExitPage from './pages/attendant/VehicleExitPage.jsx';
 import UsersPage from './pages/admin/UsersPage.jsx';
 
 // /dashboard sends each user to their own role's home page.
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/driver" element={<RequireAuth roles={[ROLES.DRIVER]}><DriverHome /></RequireAuth>} />
           <Route path="/attendant" element={<RequireAuth roles={[ROLES.ATTENDANT]}><AttendantHome /></RequireAuth>} />
           <Route path="/attendant/entry" element={<RequireAuth roles={[ROLES.ATTENDANT]}><VehicleEntryPage /></RequireAuth>} />
+          <Route path="/attendant/exit" element={<RequireAuth roles={[ROLES.ATTENDANT]}><VehicleExitPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth roles={[ROLES.ADMIN]}><AdminHome /></RequireAuth>} />
           <Route path="/admin/slots" element={<RequireAuth roles={[ROLES.ADMIN]}><SlotsPage /></RequireAuth>} />
           <Route path="/admin/rates" element={<RequireAuth roles={[ROLES.ADMIN]}><RatesPage /></RequireAuth>} />
