@@ -1,4 +1,3 @@
-
 const db = require('../../db');
 const { HttpError } = require('../../errors');
 const parking = require('./parking.repository');
@@ -38,6 +37,11 @@ async function startSession(vehicle) {
   const connection = await db.getConnection();
 
   try {
+    // NFR-04: READ COMMITTED makes every check below see sessions other requests have
+    // just committed. With the default REPEATABLE READ the first plain SELECT fixes a
+    // snapshot, and two simultaneous requests could both be given the same free slot.
+    // This setting applies to the next transaction on this connection only.
+    await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
 
     // Lock the vehicle row so concurrent requests cannot assign it twice.

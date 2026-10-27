@@ -1,4 +1,3 @@
-
 const db = require('../../db');
 
 async function findVehicleById(vehicleId, userId = null) {
@@ -41,35 +40,67 @@ async function findSessionEntryTime(connection, sessionId) {
   return rows[0].entryTime;
 }
 
-// Finds a suitable slot that is enabled, not occupied,
-// and not reserved for the current time.
-async function findAvailableSlot(connection, vehicleType) {
-  const [rows] = await connection.query(
-    `SELECT ps.id, ps.code, ps.slot_type AS type
-     FROM parking_slots ps
-     WHERE ps.slot_type = ?
-       AND ps.is_disabled = FALSE
-       AND NOT EXISTS (
-         SELECT 1
-         FROM parking_sessions session
-         WHERE session.slot_id = ps.id
-           AND session.status = 'active'
-       )
-       AND NOT EXISTS (
-         SELECT 1
-         FROM reservations r
-         WHERE r.slot_id = ps.id
-           AND r.status = 'reserved'
-           AND r.start_time <= NOW()
-           AND r.end_time > NOW()
-       )
-     ORDER BY LENGTH(ps.code), ps.code
-     LIMIT 1
-     FOR UPDATE`,
-    [vehicleType],
-  );
+// A slot is free when it is enabled, has no active session, and no reservation
+// covers the current time.
+const SLOT_IS_FREE = `
+  ps.is_disabled = FALSE
+  AND NOT EXISTS (
+    SELECT 1
+    FROM parking_sessions session
+    WHERE session.slot_id = ps.id
+      AND session.status = 'active'
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM reservations r
+    WHERE r.slot_id = ps.id
+      AND r.status = 'reserved'
+      AND r.start_time <= NOW()
+      AND r.end_time > NOW()
+  )`;
 
-  return rows[0] || null;
+// First candidates are few because at most one request per pooled connection is
+// assigning at the same time; the larger batch is a fallback.
+const CANDIDATE_BATCHES = [30, 500];
+
+// Finds a suitable slot that is enabled, not occupied, and not reserved for the
+// current time, and locks it for this transaction (NFR-04).
+//
+// Step 1 lists free slots without locking anything (smallest code first).
+// Step 2 tries to lock them one at a time. SKIP LOCKED passes over a slot another
+// request is assigning right now, and the free check is repeated once the lock is
+// held, so it sees every session committed before that moment.
+// Locking while sorting would lock every free slot at once, so concurrent requests
+// would all be told that no slot is free.
+// Must run in a READ COMMITTED transaction (see parking.service.startSession).
+async function findAvailableSlot(connection, vehicleType) {
+  for (const batch of CANDIDATE_BATCHES) {
+    const [candidates] = await connection.query(
+      `SELECT ps.id
+       FROM parking_slots ps
+       WHERE ps.slot_type = ?
+         AND ${SLOT_IS_FREE}
+       ORDER BY LENGTH(ps.code), ps.code
+       LIMIT ?`,
+      [vehicleType, batch],
+    );
+
+    for (const { id } of candidates) {
+      const [rows] = await connection.query(
+        `SELECT ps.id, ps.code, ps.slot_type AS type
+         FROM parking_slots ps
+         WHERE ps.id = ?
+           AND ${SLOT_IS_FREE}
+         FOR UPDATE SKIP LOCKED`,
+        [id],
+      );
+      if (rows[0]) return rows[0];
+    }
+
+    if (candidates.length < batch) break; // nothing more to try
+  }
+
+  return null;
 }
 
 // Checks whether the vehicle already has an active parking session.
