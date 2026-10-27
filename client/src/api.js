@@ -63,4 +63,15 @@ export const api = {
     request('GET', `/parking/locate?registrationNumber=${encodeURIComponent(registrationNumber)}`),
   // FR-05: the attendant records entry by registration number.
   enterVehicle: (registrationNumber) => request('POST', '/parking/entry', { registrationNumber }),
+  // FR-12: administrators manage users and their vehicles. filter: { role, search }.
+  listUsers: (filter = {}) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filter)) if (value) params.set(key, value);
+    const query = params.toString();
+    return request('GET', `/admin/users${query ? `?${query}` : ''}`);
+  },
+  addUser: (details) => request('POST', '/admin/users', details),
+  removeUser: (id) => request('DELETE', `/admin/users/${id}`),
+  listUserVehicles: (id) => request('GET', `/admin/users/${id}/vehicles`),
+  adminRemoveVehicle: (id) => request('DELETE', `/admin/vehicles/${id}`),
 };
