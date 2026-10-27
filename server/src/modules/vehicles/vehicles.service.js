@@ -55,7 +55,16 @@ async function update(id, userId, body) {
 }
 
 async function remove(id, userId) {
-  const deleted = await vehicles.remove(id, userId);
+  let deleted;
+  try {
+    deleted = await vehicles.remove(id, userId);
+  } catch (err) {
+    // Parking sessions keep their vehicle (ON DELETE RESTRICT), so history is never lost.
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      throw new HttpError(409, 'This vehicle has parking history and cannot be removed');
+    }
+    throw err;
+  }
 
   if (!deleted) {
     throw new HttpError(404, 'Vehicle not found');
