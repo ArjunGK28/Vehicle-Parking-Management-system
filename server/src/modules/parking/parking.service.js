@@ -127,9 +127,15 @@ async function exitVehicle({ registrationNumber, exitTime }) {
   const connection = await db.getConnection();
 
   try {
+    // Like startSession: READ COMMITTED lets the read below see a session that another
+    // exit completed while this one waited for the vehicle lock.
+    await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await connection.beginTransaction();
 
-    const session = await parking.lockActiveSessionByRegistration(connection, registrationNumber);
+    const vehicleId = await parking.lockVehicleByRegistration(connection, registrationNumber);
+    const session = vehicleId
+      ? await parking.findActiveSessionForExit(connection, vehicleId)
+      : null;
     if (!session) {
       throw new HttpError(404, 'No active parking session found for this vehicle');
     }
