@@ -92,8 +92,9 @@ export default function ReserveSlotPage() {
     } catch (err) {
       setErrors(err.fields || {});
       // IT-04_03: a taken slot comes back as 409; point the driver to another slot.
+      const message = /[.!?]$/.test(err.message) ? err.message : `${err.message}.`;
       const hint = err.status === 409 ? ' Choose another slot or time.' : '';
-      setNotice({ error: true, text: `${err.message}${hint}` });
+      setNotice({ error: true, text: `${message}${hint}` });
     } finally {
       setSaving(false);
     }
@@ -144,7 +145,7 @@ export default function ReserveSlotPage() {
               <thead>
                 <tr>
                   <th scope="col">Slot</th>
-                  <th scope="col">Vehicle</th>
+                  <th scope="col" className="hide-narrow">Vehicle</th>
                   <th scope="col">From</th>
                   <th scope="col">Until</th>
                   <th scope="col">Status</th>
@@ -153,8 +154,11 @@ export default function ReserveSlotPage() {
               <tbody>
                 {reservations.map((r) => (
                   <tr key={r.id}>
-                    <td><strong>{slotCode(r.slot_id)}</strong></td>
-                    <td>{registration(r.vehicle_id)}</td>
+                    <td>
+                      <strong>{slotCode(r.slot_id)}</strong>
+                      <span className="muted small-text show-narrow">{registration(r.vehicle_id)}</span>
+                    </td>
+                    <td className="hide-narrow">{registration(r.vehicle_id)}</td>
                     <td>{shortTime(r.start_time)}</td>
                     <td>{shortTime(r.end_time)}</td>
                     <td><span className={`status ${r.status === 'reserved' ? 'status-available' : ''}`}>{RESERVATION_STATUS[r.status] || r.status}</span></td>
