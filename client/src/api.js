@@ -72,6 +72,14 @@ export const api = {
     const query = params.toString();
     return request('GET', `/admin/users${query ? `?${query}` : ''}`);
   },
+  // FR-02: the driver's own vehicles.
+  listVehicles: () => request('GET', '/vehicles'),
+  addVehicle: (vehicle) => request('POST', '/vehicles', vehicle),
+  updateVehicle: (id, vehicle) => request('PUT', `/vehicles/${id}`, vehicle),
+  removeVehicle: (id) => request('DELETE', `/vehicles/${id}`),
+  // FR-04: the driver's reservations. reservation: { vehicleId, slotId, startTime, endTime }.
+  listReservations: () => request('GET', '/reservations'),
+  reserveSlot: (reservation) => request('POST', '/reservations', reservation),
   addUser: (details) => request('POST', '/admin/users', details),
   removeUser: (id) => request('DELETE', `/admin/users/${id}`),
   listUserVehicles: (id) => request('GET', `/admin/users/${id}/vehicles`),
