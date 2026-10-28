@@ -248,6 +248,16 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
 }
 .users-table td:first-child { white-space: normal; }
 
+/* Driver pages */
+.field-label { font-weight: 600; font-size: 0.9rem; }
+.form-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.55rem; }
+.form-actions button { margin-top: 0; }
+@media (max-width: 480px) {
+  .form-actions { margin-top: 0; }
+}
+.vehicle-cards li { padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
+.vehicle-cards li.is-editing { border-color: var(--primary); }
+.row-actions { display: flex; gap: 0.4rem; }
 
 /* Parking history */
 .pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; }
