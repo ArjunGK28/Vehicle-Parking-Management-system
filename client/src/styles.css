@@ -247,3 +247,7 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
   .show-narrow { display: block; overflow-wrap: anywhere; }
 }
 .users-table td:first-child { white-space: normal; }
+
+
+/* Parking history */
+.pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; }
