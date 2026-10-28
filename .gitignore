@@ -223,3 +223,9 @@ npm-debug.log*
 coverage/
 .env.local
 .env.*.local
+
+# Playwright browser tests
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
