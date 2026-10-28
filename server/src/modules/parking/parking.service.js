@@ -154,7 +154,7 @@ async function exitVehicle({ registrationNumber, exitTime }) {
       });
     }
 
-    const fee = await rates.feeFor(session.slotType, times.durationSeconds);
+    const fee = await rates.feeFor(session.slotType, times.durationSeconds, connection);
 
     await parking.completeSession(connection, session.id, {
       exitTime: times.exitTime,

@@ -258,3 +258,6 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
 .vehicle-cards li { padding: 0.65rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
 .vehicle-cards li.is-editing { border-color: var(--primary); }
 .row-actions { display: flex; gap: 0.4rem; }
+
+/* Parking history */
+.pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; }

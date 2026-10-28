@@ -84,4 +84,8 @@ export const api = {
   removeUser: (id) => request('DELETE', `/admin/users/${id}`),
   listUserVehicles: (id) => request('GET', `/admin/users/${id}/vehicles`),
   adminRemoveVehicle: (id) => request('DELETE', `/admin/vehicles/${id}`),
+  // FR-11: parking history, one page at a time. Drivers read their own; admins read any user's.
+  myHistory: (page = 1, pageSize = 20) => request('GET', `/history?page=${page}&pageSize=${pageSize}`),
+  userHistory: (userId, page = 1, pageSize = 20) =>
+    request('GET', `/history/users/${userId}?page=${page}&pageSize=${pageSize}`),
 };
