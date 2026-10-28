@@ -6,7 +6,7 @@ const features = [
   { name: 'Slot availability', description: 'See which slots are free right now (FR-03)', ready: true, to: '/slots' },
   { name: 'Reserve a slot', description: 'Book a slot before you arrive (FR-04)' },
   { name: 'Payments', description: 'Pay for your parking sessions (FR-10)' },
-  { name: 'Parking history', description: 'Review your past sessions (FR-11)' },
+  { name: 'Parking history', description: 'Review your past sessions (FR-11)', ready: true, to: '/history' },
 ];
 
 export default function DriverHome() {

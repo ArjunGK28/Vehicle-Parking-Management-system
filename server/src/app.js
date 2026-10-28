@@ -10,6 +10,7 @@ const reservationsRoutes = require('./modules/reservations/reservations.routes')
 const parkingRoutes = require('./modules/parking/parking.routes');
 const ratesRoutes = require('./modules/rates/rates.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const historyRoutes = require('./modules/history/history.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
@@ -29,6 +30,7 @@ app.use('/api/reservations', reservationsRoutes);
 app.use('/api/parking', parkingRoutes);
 app.use('/api/rates', ratesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/history', historyRoutes);
 
 app.use('/api', notFound);
 
