@@ -12,16 +12,17 @@ async function update(type, rate, adminId) {
   return rates.findByType(type);
 }
 
-async function getRate(type) {
-  const rate = await rates.findByType(type);
+async function getRate(type, executor) {
+  const rate = await rates.findByType(type, executor);
   if (!rate) throw new HttpError(503, 'No parking rate is set for this vehicle type');
   return rate;
 }
 
 // FR-09: the fee for a stay, using the rate as it is right now, so an updated rate
-// applies to every fee calculated after the change (IT_34). Vehicle exit (#66) calls this.
-async function feeFor(type, durationSeconds) {
-  const rate = await getRate(type);
+// applies to every fee calculated after the change (IT_34). Vehicle exit (#66) calls this,
+// inside its transaction, and passes that transaction's connection as executor.
+async function feeFor(type, durationSeconds, executor) {
+  const rate = await getRate(type, executor);
   return { ...calculateFee(durationSeconds, rate), rate };
 }
 

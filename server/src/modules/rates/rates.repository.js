@@ -13,8 +13,10 @@ async function findAll() {
 }
 
 // Always reads the stored row, so a rate an administrator just changed is used straight away.
-async function findByType(type) {
-  const [rows] = await db.query(`SELECT ${RATE_COLUMNS} FROM parking_rates WHERE slot_type = ?`, [type]);
+// executor is the pool by default; a transaction passes its own connection so that it does
+// not ask the pool for a second connection while it holds the first (NFR-04, NFR-06).
+async function findByType(type, executor = db) {
+  const [rows] = await executor.query(`SELECT ${RATE_COLUMNS} FROM parking_rates WHERE slot_type = ?`, [type]);
   return rows[0] || null;
 }
 
