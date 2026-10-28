@@ -62,6 +62,23 @@ function reservationBody(overrides = {}) {
 }
 
 describe('POST /api/reservations', () => {
+  test('an ISO time with Z and milliseconds is accepted, not a server error (Sprint 1 demo bug)', async () => {
+    const res = await agent
+      .post('/api/reservations')
+      .send(reservationBody({ startTime: '2027-01-10T04:30:00.000Z', endTime: '2027-01-10T05:30:00.000Z' }));
+
+    expect(res.status).toBe(201);
+  });
+
+  test('text that is not a date-time is refused with 400', async () => {
+    const res = await agent
+      .post('/api/reservations')
+      .send(reservationBody({ startTime: '1' }));
+
+    expect(res.status).toBe(400);
+    expect(res.body.fields).toEqual({ startTime: 'A valid start time is required' });
+  });
+
   test('creates a reservation for the logged-in driver', async () => {
     const res = await agent
       .post('/api/reservations')
