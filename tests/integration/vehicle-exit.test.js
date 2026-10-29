@@ -1,5 +1,6 @@
 // Stories #66 (FR-08, NFR-02) and #68 (FR-09): the attendant records exit and the fee
-// is calculated on exit.
+// is calculated on exit. The session then waits for payment, which completes it and
+// releases the slot (UC-08); exit-awaiting-payment.test.js covers that part.
 const request = require('supertest');
 const app = require('../../server/src/app');
 const { ROLES } = require('../../server/src/modules/users/roles');
@@ -53,6 +54,7 @@ async function park(registrationNumber, slotCode, entry) {
 }
 
 const exit = (body, agent = attendant) => agent.post('/api/parking/exit').send(body);
+const payCash = (sessionId) => attendant.post('/api/payments').send({ sessionId, method: 'cash' });
 
 async function sessionRow(id) {
   const [rows] = await db.query(
@@ -68,7 +70,7 @@ const slotStatus = async (code) =>
   (await attendant.get('/api/slots')).body.slots.find((s) => s.code === code).status;
 
 describe('recording exit (FR-08)', () => {
-  test('UT-08_01: exit records the time and completes the session', async () => {
+  test('UT-08_01: exit records the time and the session waits for payment', async () => {
     // Just under 2 hours ago, so the stay bills 120 minutes even if a second passes.
     const sessionId = await park('KA01AB1234', 'P-08', 2 * 3600 - 30);
 
@@ -84,13 +86,13 @@ describe('recording exit (FR-08)', () => {
       billedMinutes: 120,
       fee: 40,
       paymentStatus: 'unpaid',
-      status: 'completed',
+      status: 'awaiting_payment',
     });
     expect(res.body.session.exitTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
-    expect(res.body.message).toBe('Vehicle KA01AB1234 has exited slot P-08. Fee: ₹40.');
+    expect(res.body.message).toBe('Exit recorded for KA01AB1234 from slot P-08. Fee: ₹40. The slot is released once it is paid.');
 
     expect(await sessionRow(sessionId)).toEqual({
-      status: 'completed',
+      status: 'awaiting_payment',
       exitTime: res.body.session.exitTime,
       feeAmount: 40,
       billedMinutes: 120,
@@ -98,13 +100,17 @@ describe('recording exit (FR-08)', () => {
     });
   });
 
-  test('UT-08_02: the slot is released to Available after exit (SYS-12)', async () => {
-    await park('KA01AB1234', 'P-08', 600);
+  test('UT-08_02: the slot is released to Available once the exit is paid (SYS-12, UC-08)', async () => {
+    const sessionId = await park('KA01AB1234', 'P-08', 600);
     expect(await slotStatus('P-08')).toBe('occupied');
 
     expect((await exit({ registrationNumber: 'KA01AB1234' })).status).toBe(200);
+    // The vehicle has not paid yet, so it is still on site and holds the slot.
+    expect(await slotStatus('P-08')).toBe('occupied');
 
+    expect((await payCash(sessionId)).status).toBe(201);
     expect(await slotStatus('P-08')).toBe('available');
+    expect((await sessionRow(sessionId)).status).toBe('completed');
   });
 
   test('IT-08_03: exit is blocked when there is no active session (DR-04)', async () => {
@@ -128,30 +134,37 @@ describe('recording exit (FR-08)', () => {
     expect((await sessionRow(sessionId)).status).toBe('active');
   });
 
-  test('IT-08_05: exit calculates the fee before the session is completed', async () => {
+  test('IT-08_05: exit calculates the fee before payment completes the session', async () => {
     const sessionId = await park('KA01AB1234', 'P-08', '2026-10-20 10:00:00');
 
     const res = await exit({ registrationNumber: 'KA01AB1234', exitTime: '2026-10-20 12:00' });
 
     expect(res.status).toBe(200);
     expect(res.body.session).toMatchObject({ entryTime: '2026-10-20 10:00:00', exitTime: '2026-10-20 12:00:00', fee: 40 });
-    // The fee is saved in the same update that completes the session.
-    expect(await sessionRow(sessionId)).toMatchObject({ status: 'completed', feeAmount: 40, billedMinutes: 120 });
+    // The fee is saved in the same update that records the exit, before anyone pays.
+    expect(await sessionRow(sessionId)).toMatchObject({ status: 'awaiting_payment', feeAmount: 40, billedMinutes: 120 });
   });
 
-  test('ST-08_06: a completed session cannot be changed by another exit (DR-10)', async () => {
+  test('ST-08_06: a recorded exit cannot be changed by another exit (DR-10)', async () => {
     const sessionId = await park('KA01AB1234', 'P-08', '2026-10-20 10:00:00');
     expect((await exit({ registrationNumber: 'KA01AB1234', exitTime: '2026-10-20 12:00' })).status).toBe(200);
     const before = await sessionRow(sessionId);
 
+    // While it waits for payment, a second exit is refused and says why.
     const again = await exit({ registrationNumber: 'KA01AB1234', exitTime: '2026-10-20 18:00' });
-
-    expect(again.status).toBe(404);
-    expect(again.body.error).toBe('No active parking session found for this vehicle');
+    expect(again.status).toBe(409);
+    expect(again.body.error).toBe('Exit is already recorded for KA01AB1234. It is waiting for payment of ₹40.');
     expect(await sessionRow(sessionId)).toEqual(before);
+
+    // Once paid and completed, the vehicle has no session left to exit (DR-04).
+    expect((await payCash(sessionId)).status).toBe(201);
+    const afterPaid = await exit({ registrationNumber: 'KA01AB1234', exitTime: '2026-10-20 18:00' });
+    expect(afterPaid.status).toBe(404);
+    expect(afterPaid.body.error).toBe('No active parking session found for this vehicle');
+    expect(await sessionRow(sessionId)).toMatchObject({ exitTime: before.exitTime, feeAmount: 40, status: 'completed' });
   });
 
-  test('two exits at the same moment complete the session only once', async () => {
+  test('two exits at the same moment record the exit only once', async () => {
     const sessionId = await park('KA01AB1234', 'P-08', 3600);
 
     const results = await Promise.all([
@@ -159,8 +172,8 @@ describe('recording exit (FR-08)', () => {
       exit({ registrationNumber: 'KA01AB1234' }),
     ]);
 
-    expect(results.map((r) => r.status).sort()).toEqual([200, 404]);
-    expect((await sessionRow(sessionId)).status).toBe('completed');
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect((await sessionRow(sessionId)).status).toBe('awaiting_payment');
   });
 });
 
