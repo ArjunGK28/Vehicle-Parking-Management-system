@@ -24,4 +24,11 @@ async function unpaid(req, res) {
   res.json({ sessions });
 }
 
-module.exports = { methods, pay, unpaid };
+// UC-08: staff see every vehicle still waiting to pay. Never cached, for the same reason.
+async function awaiting(req, res) {
+  const sessions = await service.awaitingPayment();
+  res.set('Cache-Control', 'no-store');
+  res.json({ sessions });
+}
+
+module.exports = { methods, pay, unpaid, awaiting };

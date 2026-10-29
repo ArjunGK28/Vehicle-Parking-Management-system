@@ -89,4 +89,8 @@ async function unpaidSessions(user) {
   return payments.findUnpaidForUser(user.id);
 }
 
-module.exports = { listMethods, pay, unpaidSessions };
+async function awaitingPayment() {
+  return payments.findAwaitingPayment();
+}
+
+module.exports = { listMethods, pay, unpaidSessions, awaitingPayment };

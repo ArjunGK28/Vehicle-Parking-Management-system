@@ -84,4 +84,33 @@ async function findUnpaidForUser(userId) {
   return rows;
 }
 
-module.exports = { lockSession, createPayment, completePaidSession, findPayment, findUnpaidForUser };
+// UC-08: every vehicle whose exit is recorded but not yet paid, longest wait first, so
+// the attendant can take payment when a driver comes back (for example with cash
+// after UPI failed). waitingMinutes is how long ago the exit was recorded.
+async function findAwaitingPayment() {
+  const [rows] = await db.query(
+    `SELECT ${SESSION_COLUMNS},
+            TIMESTAMPDIFF(MINUTE, s.exit_time, NOW()) AS waitingMinutes,
+            (SELECT COUNT(*) FROM payments p WHERE p.session_id = s.id AND p.status = 'failed') AS failedAttempts
+     FROM parking_sessions s
+     JOIN vehicles v ON v.id = s.vehicle_id
+     JOIN parking_slots ps ON ps.id = s.slot_id
+     WHERE s.status = '${SESSION_STATUS.AWAITING_PAYMENT}'
+     ORDER BY s.exit_time, s.id`,
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    waitingMinutes: Math.max(0, Number(row.waitingMinutes)),
+    failedAttempts: Number(row.failedAttempts),
+  }));
+}
+
+module.exports = {
+  lockSession,
+  createPayment,
+  completePaidSession,
+  findPayment,
+  findUnpaidForUser,
+  findAwaitingPayment,
+};
