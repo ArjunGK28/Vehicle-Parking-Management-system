@@ -1,7 +1,7 @@
 // Issue #52 (NFR-05, UC-05): a trained attendant completes a normal entry within 1 minute.
 // A script is much faster than a person, so these tests prove the screen is simple (one field,
 // keyboard only, ready for the next vehicle) and that the system's part is a tiny share of the
-// minute. The measured human timing is recorded with Documents/NFR-05-usability-test.md.
+// minute.
 const { test, expect } = require('@playwright/test');
 const { ACCOUNTS, resetData } = require('./support/data');
 const { login } = require('./support/pages');
