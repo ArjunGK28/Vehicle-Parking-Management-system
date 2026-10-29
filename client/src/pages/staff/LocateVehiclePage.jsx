@@ -88,6 +88,18 @@ export default function LocateVehiclePage() {
                   <th scope="row">Entered at</th>
                   <td>{result.session.entryTime}</td>
                 </tr>
+                <tr>
+                  <th scope="row">Stay</th>
+                  <td>
+                    {/* UC-08: exit recorded but not paid, so the vehicle is still on site. */}
+                    {result.session.status === 'awaiting_payment' ? (
+                      <>
+                        Exit recorded, waiting for payment.
+                        {user.role === 'attendant' && <> <Link to="/attendant/exit">Take payment</Link></>}
+                      </>
+                    ) : 'Parked'}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </>
