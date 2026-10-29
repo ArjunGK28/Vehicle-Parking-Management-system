@@ -26,6 +26,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // Payments point at sessions, so they go first.
+  await db.query('DELETE FROM payments');
   await db.query('DELETE FROM parking_sessions');
   await db.query('DELETE FROM parking_slots');
   await setRate({ hourlyRate: 20, minimumFee: 10, billingStepMinutes: 15 });

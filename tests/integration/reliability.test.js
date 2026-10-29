@@ -161,7 +161,11 @@ describe('availability (NFR-03)', () => {
 });
 
 describe('simultaneous operations keep slot and session data consistent (NFR-06)', () => {
-  beforeEach(() => db.query('DELETE FROM parking_sessions'));
+  // Payments point at sessions, so they go first.
+  beforeEach(async () => {
+    await db.query('DELETE FROM payments');
+    await db.query('DELETE FROM parking_sessions');
+  });
   afterEach(async () => {
     expect(await findIntegrityProblems()).toEqual([]);
   });
@@ -274,7 +278,11 @@ describe('simultaneous operations keep slot and session data consistent (NFR-06)
 });
 
 describe('relationships stay accurate (NFR-09)', () => {
-  beforeEach(() => db.query('DELETE FROM parking_sessions'));
+  // Payments point at sessions, so they go first.
+  beforeEach(async () => {
+    await db.query('DELETE FROM payments');
+    await db.query('DELETE FROM parking_sessions');
+  });
 
   test('a stay leaves a complete record: vehicle, slot, times, fee, then paid and completed', async () => {
     const entry = await enter(carPlate(3));
