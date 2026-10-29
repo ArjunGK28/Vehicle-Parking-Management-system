@@ -21,7 +21,9 @@ function errorHandler(err, req, res, next) {
     return res.status(413).json({ error: 'Request body is too large' });
   }
 
-  console.error(err);
+  // NFR-18: log the code and stack only. Printing the whole error would also print the
+  // SQL with its values (an email, a password hash) that the database driver attaches to it.
+  console.error(`${err && err.code ? `[${err.code}] ` : ''}${(err && err.stack) || err}`);
   return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }
 

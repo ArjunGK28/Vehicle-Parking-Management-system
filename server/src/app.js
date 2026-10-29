@@ -18,6 +18,21 @@ const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
 const app = express();
 
+// NFR-18: do not announce the framework, and mark every API answer as private, so a
+// browser or proxy never keeps user or payment data. These run before the body parser,
+// so even a refused or broken request carries them.
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'DENY');
+  res.set('Referrer-Policy', 'no-referrer');
+  next();
+});
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
