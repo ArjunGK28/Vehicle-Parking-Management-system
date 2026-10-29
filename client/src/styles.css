@@ -261,3 +261,34 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
 
 /* Parking history */
 .pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; }
+
+/* Audit log */
+.audit-table td:first-child { white-space: nowrap; font-size: 0.9rem; }
+.audit-table td .small-text { display: block; }
+@media (max-width: 560px) {
+  .audit-table td:first-child { white-space: normal; }
+}
+
+/* Reports */
+.preset-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+.stat {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.stat .status { justify-self: start; }
+.stat-value { font-size: 1.4rem; font-weight: 700; }
+.stat-main { border-color: var(--primary); }
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.section-head .section-title { margin: 0; }
+.numbers-table td:not(:first-child),
+.numbers-table th:not(:first-child) { text-align: right; }
