@@ -264,3 +264,7 @@ button.small { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
 
 /* Audit log */
 .audit-table td:first-child { white-space: nowrap; font-size: 0.9rem; }
+.audit-table td .small-text { display: block; }
+@media (max-width: 560px) {
+  .audit-table td:first-child { white-space: normal; }
+}

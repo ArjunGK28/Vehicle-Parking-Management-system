@@ -64,7 +64,7 @@ export default function AuditLogPage() {
                 <thead>
                   <tr>
                     <th scope="col">When</th>
-                    <th scope="col">Administrator</th>
+                    <th scope="col" className="hide-narrow">Administrator</th>
                     <th scope="col">Action</th>
                     <th scope="col">Details</th>
                   </tr>
@@ -73,12 +73,15 @@ export default function AuditLogPage() {
                   {data.entries.map((entry) => (
                     <tr key={entry.id}>
                       <td>{String(entry.createdAt).slice(0, 16)}</td>
-                      <td>
+                      <td className="hide-narrow">
                         {entry.adminName}
-                        <span className="muted small-text show-narrow">{entry.adminEmail}</span>
+                        <span className="muted small-text">{entry.adminEmail}</span>
                       </td>
                       <td><span className="badge">{ACTION_LABELS[entry.action] || entry.action}</span></td>
-                      <td>{entry.summary}</td>
+                      <td>
+                        {entry.summary}
+                        <span className="muted small-text show-narrow">by {entry.adminName}</span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
