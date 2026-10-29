@@ -33,6 +33,28 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
 );
 
 
+-- ---------------------------------------------------------------------------
+-- Audit log module (NFR-16, NFR-17)
+-- ---------------------------------------------------------------------------
+
+-- One row per important administrator action, written after the action succeeds.
+-- The admin's name and email are copied in, so the trail still reads correctly after
+-- that account is removed (admin_id then becomes NULL).
+CREATE TABLE IF NOT EXISTS audit_log (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  admin_id    INT UNSIGNED NULL,
+  admin_name  VARCHAR(100) NOT NULL,
+  admin_email VARCHAR(254) NOT NULL,
+  action      VARCHAR(40)  NOT NULL,
+  summary     VARCHAR(500) NOT NULL,
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_audit_log_created (created_at),
+  KEY idx_audit_log_action (action),
+  CONSTRAINT fk_audit_log_admin FOREIGN KEY (admin_id) REFERENCES users (id) ON DELETE SET NULL
+);
+
+
 -- ---------------------------------------------------------------------
 -- Vehicles module (FR-02)
 -- ---------------------------------------------------------------------
