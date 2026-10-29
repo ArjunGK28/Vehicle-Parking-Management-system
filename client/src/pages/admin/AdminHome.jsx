@@ -8,7 +8,7 @@ const features = [
   { name: 'Parking rates', description: 'Set the hourly rates used for fees (FR-12)', ready: true, to: '/admin/rates' },
   { name: 'Parking history', description: 'View any driver\'s past sessions (FR-11)', ready: true, to: '/admin/history' },
   { name: 'Reports', description: 'Occupancy reports for a date range (FR-12)' },
-  { name: 'Audit log', description: 'Who changed what, and when (NFR-16, NFR-17)' },
+  { name: 'Audit log', description: 'Who changed what, and when (NFR-16, NFR-17)', ready: true, to: '/admin/audit' },
   { name: 'Track vehicle', description: 'Find where a parked vehicle is (FR-07)', ready: true, to: '/track' },
 ];
 

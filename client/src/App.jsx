@@ -14,6 +14,7 @@ import LocateVehiclePage from './pages/staff/LocateVehiclePage.jsx';
 import VehicleEntryPage from './pages/attendant/VehicleEntryPage.jsx';
 import VehicleExitPage from './pages/attendant/VehicleExitPage.jsx';
 import UsersPage from './pages/admin/UsersPage.jsx';
+import AuditLogPage from './pages/admin/AuditLogPage.jsx';
 import MyVehiclesPage from './pages/driver/MyVehiclesPage.jsx';
 import ReserveSlotPage from './pages/driver/ReserveSlotPage.jsx';
 import DriverPaymentsPage from './pages/driver/DriverPaymentsPage.jsx';
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/admin/slots" element={<RequireAuth roles={[ROLES.ADMIN]}><SlotsPage /></RequireAuth>} />
           <Route path="/admin/rates" element={<RequireAuth roles={[ROLES.ADMIN]}><RatesPage /></RequireAuth>} />
           <Route path="/admin/users" element={<RequireAuth roles={[ROLES.ADMIN]}><UsersPage /></RequireAuth>} />
+          <Route path="/admin/audit" element={<RequireAuth roles={[ROLES.ADMIN]}><AuditLogPage /></RequireAuth>} />
           <Route path="/history" element={<RequireAuth roles={[ROLES.DRIVER]}><ParkingHistoryPage /></RequireAuth>} />
           <Route path="/admin/history" element={<RequireAuth roles={[ROLES.ADMIN]}><ParkingHistoryPage /></RequireAuth>} />
           <Route path="/slots" element={<RequireAuth><SlotAvailabilityPage /></RequireAuth>} />

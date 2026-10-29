@@ -93,4 +93,10 @@ export const api = {
   myHistory: (page = 1, pageSize = 20) => request('GET', `/history?page=${page}&pageSize=${pageSize}`),
   userHistory: (userId, page = 1, pageSize = 20) =>
     request('GET', `/history/users/${userId}?page=${page}&pageSize=${pageSize}`),
+  // NFR-16 / NFR-17: the audit trail, for administrators. query: { action, page, pageSize }.
+  listAuditLog: (query = {}) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) if (value) params.set(key, value);
+    return request('GET', `/audit?${params.toString()}`);
+  },
 };
