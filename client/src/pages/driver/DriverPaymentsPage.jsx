@@ -4,8 +4,9 @@ import { api } from '../../api.js';
 import AppLayout from '../../components/AppLayout.jsx';
 import PaymentForm from '../payments/PaymentForm.jsx';
 
-// FR-10 / UC-10: the driver's completed sessions that still need paying, each with a
-// Pay button that opens the payment form for that session (#42).
+// FR-10 / UC-10: the driver's stays whose exit is recorded but not paid yet, each with a
+// Pay button that opens the payment form for that session (#42). Paying here completes
+// the stay and frees the slot, the same as paying the attendant at the exit (UC-08).
 export default function DriverPaymentsPage() {
   const [sessions, setSessions] = useState(null);
   const [payingId, setPayingId] = useState(null);
@@ -36,7 +37,7 @@ export default function DriverPaymentsPage() {
       <section className="panel">
         <p><Link to="/driver">← Driver dashboard</Link></p>
         <h2>Payments</h2>
-        <p className="muted">Completed sessions that still need paying, newest first. Cash is paid to the attendant at the exit.</p>
+        <p className="muted">Stays whose exit is recorded but not paid yet, newest first. Cash is paid to the attendant at the exit.</p>
 
         {notice && (
           <p className={`alert ${notice.error ? 'alert-error' : 'alert-success'}`} role={notice.error ? 'alert' : 'status'}>
