@@ -88,6 +88,29 @@ Open http://localhost:5173. The client forwards `/api` requests to the server on
 To run it as one server instead, build the client first (`npm run build`), then
 `npm start -w server` and open http://localhost:4000.
 
+## Exit and payment
+
+A stay moves through three states (UC-08):
+
+| Session status | Meaning | Slot |
+|---|---|---|
+| `active` | The vehicle is parked | Occupied |
+| `awaiting_payment` | Exit is recorded and the fee is fixed, not paid yet | Still occupied |
+| `completed` | Paid | Released |
+
+If a payment fails (for example UPI is down), the vehicle stays in **Waiting for payment** on
+the attendant's Vehicle exit page. When the driver comes back, the attendant picks it from
+that list and takes cash. The fee does not grow while they wait, and the vehicle cannot enter
+again until the stay is paid.
+
+There is no real payment provider; a simulated gateway stands in for one:
+
+| Method | Succeeds | Declined (to try a failed payment) |
+|---|---|---|
+| Cash | Always (staff only) | |
+| UPI | Any UPI ID, e.g. `arjun@okaxis` | `failure@upi` |
+| Card | `4111 1111 1111 1111`, any future expiry | `4000 0000 0000 0002` |
+
 ## Tests
 
 ```
