@@ -1,4 +1,5 @@
 const service = require('./parking.service');
+const { SESSION_STATUS } = require('./sessionStatuses');
 const { validateLocateQuery, cleanRegistration, validateExit } = require('./parking.validation');
 
 async function assignSlot(req, res) {
@@ -39,7 +40,8 @@ async function exit(req, res) {
 
   res.json({
     session,
-    message: `Vehicle ${session.registrationNumber} has exited slot ${session.slotCode}. Fee: ₹${session.fee}.`,
+    message: `Exit recorded for ${session.registrationNumber} from slot ${session.slotCode}. `
+      + `Fee: ₹${session.fee}. The slot is released once it is paid.`,
   });
 }
 
@@ -51,7 +53,9 @@ async function locate(req, res) {
   res.set('Cache-Control', 'no-store');
   res.json({
     ...result,
-    message: `Vehicle ${result.vehicle.registrationNumber} is in slot ${result.slot.code}.`,
+    message: result.session.status === SESSION_STATUS.AWAITING_PAYMENT
+      ? `Vehicle ${result.vehicle.registrationNumber} is in slot ${result.slot.code}, waiting to pay for its stay.`
+      : `Vehicle ${result.vehicle.registrationNumber} is in slot ${result.slot.code}.`,
   });
 }
 

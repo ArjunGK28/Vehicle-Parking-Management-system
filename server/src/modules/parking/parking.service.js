@@ -3,6 +3,7 @@ const { HttpError } = require('../../errors');
 const parking = require('./parking.repository');
 const slots = require('../slots/slots.repository');
 const rates = require('../rates/rates.service');
+const { SESSION_STATUS } = require('./sessionStatuses');
 
 async function assignSlot(vehicleId, user) {
   const isAttendant = user.role === 'attendant';
@@ -51,12 +52,15 @@ async function startSession(vehicle) {
       [vehicleId],
     );
 
-    const activeSession = await parking.findActiveSessionForVehicle(
+    const onSite = await parking.findOnSiteSessionForVehicle(
       connection,
       vehicleId,
     );
 
-    if (activeSession) {
+    if (onSite && onSite.status === SESSION_STATUS.AWAITING_PAYMENT) {
+      throw new HttpError(409, 'This vehicle has not paid for its last stay yet. Take payment before it enters again.');
+    }
+    if (onSite) {
       throw new HttpError(409, 'This vehicle already has an active parking session');
     }
 
@@ -83,7 +87,7 @@ async function startSession(vehicle) {
       slotCode: slot.code,
       slotType: slot.type,
       entryTime,
-      status: 'active',
+      status: SESSION_STATUS.ACTIVE,
     };
   } catch (err) {
     await connection.rollback();
@@ -93,11 +97,12 @@ async function startSession(vehicle) {
   }
 }
 
-// FR-07 / UC-07: where is this vehicle parked right now?
+// FR-07 / UC-07: where is this vehicle parked right now? A vehicle waiting to pay is
+// still in its slot, so it is found too, with session status awaiting_payment.
 // A vehicle that is not registered and one that is not parked get the same answer,
 // so the lookup does not reveal which registration numbers exist.
 async function locate({ registrationNumber }) {
-  const found = await parking.findActiveSessionByRegistration(registrationNumber);
+  const found = await parking.findOnSiteSessionByRegistration(registrationNumber);
   if (!found) {
     throw new HttpError(404, 'No active parking session found for this vehicle');
   }
@@ -113,16 +118,17 @@ async function locate({ registrationNumber }) {
       model: found.model,
       colour: found.colour,
     },
-    session: { id: found.sessionId, status: 'active', entryTime: found.entryTime },
+    session: { id: found.sessionId, status: found.status, entryTime: found.entryTime },
     slot: { id: slot.id, code: slot.code, type: slot.type, status: slot.status },
   };
 }
 
-// FR-08 / UC-08: the attendant records exit (#66). The fee is calculated before the
-// session is completed (FR-09, #68). The slot is free again straight away, because
-// availability only counts active sessions (SYS-12).
-// No route edits a session, and a completed session is no longer active, so a second
-// exit gets the DR-04 404 below; that is how DR-10 is kept.
+// FR-08 / UC-08: the attendant records exit (#66) and the fee is calculated (FR-09, #68).
+// The session then waits for payment: payment completes it and only then is the slot
+// released (UC-08 steps 3 and 4, SYS-12). Until then the vehicle is still on site, so
+// if UPI fails the driver can come back and pay another way.
+// No route edits a session: a second exit is refused with 409 while the session waits
+// for payment, and with the DR-04 404 once it is completed; that is how DR-10 is kept.
 async function exitVehicle({ registrationNumber, exitTime }) {
   const connection = await db.getConnection();
 
@@ -134,10 +140,16 @@ async function exitVehicle({ registrationNumber, exitTime }) {
 
     const vehicleId = await parking.lockVehicleByRegistration(connection, registrationNumber);
     const session = vehicleId
-      ? await parking.findActiveSessionForExit(connection, vehicleId)
+      ? await parking.findOnSiteSessionForExit(connection, vehicleId)
       : null;
     if (!session) {
       throw new HttpError(404, 'No active parking session found for this vehicle');
+    }
+    if (session.status === SESSION_STATUS.AWAITING_PAYMENT) {
+      throw new HttpError(
+        409,
+        `Exit is already recorded for ${session.registrationNumber}. It is waiting for payment of ₹${session.fee}.`,
+      );
     }
 
     const times = await parking.findExitTimes(connection, session.id, exitTime);
@@ -156,7 +168,7 @@ async function exitVehicle({ registrationNumber, exitTime }) {
 
     const fee = await rates.feeFor(session.slotType, times.durationSeconds, connection);
 
-    await parking.completeSession(connection, session.id, {
+    await parking.recordExit(connection, session.id, {
       exitTime: times.exitTime,
       feeAmount: fee.amount,
       billedMinutes: fee.billedMinutes,
@@ -176,7 +188,7 @@ async function exitVehicle({ registrationNumber, exitTime }) {
       billedMinutes: fee.billedMinutes,
       fee: fee.amount,
       paymentStatus: 'unpaid',
-      status: 'completed',
+      status: SESSION_STATUS.AWAITING_PAYMENT,
     };
   } catch (err) {
     await connection.rollback();
