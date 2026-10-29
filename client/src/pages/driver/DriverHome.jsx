@@ -5,7 +5,7 @@ const features = [
   { name: 'My vehicles', description: 'Register and manage your vehicles (FR-02)', ready: true, to: '/driver/vehicles' },
   { name: 'Slot availability', description: 'See which slots are free right now (FR-03)', ready: true, to: '/slots' },
   { name: 'Reserve a slot', description: 'Book a slot before you arrive (FR-04)', ready: true, to: '/driver/reserve' },
-  { name: 'Payments', description: 'Pay for your parking sessions (FR-10)' },
+  { name: 'Payments', description: 'Pay for your parking sessions (FR-10)', ready: true, to: '/driver/payments' },
   { name: 'Parking history', description: 'Review your past sessions (FR-11)', ready: true, to: '/history' },
 ];
 
