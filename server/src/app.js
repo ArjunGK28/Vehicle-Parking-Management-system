@@ -14,6 +14,7 @@ const adminRoutes = require('./modules/admin/admin.routes');
 const historyRoutes = require('./modules/history/history.routes');
 const paymentsRoutes = require('./modules/payments/payments.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
+const reportsRoutes = require('./modules/reports/reports.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
@@ -44,6 +45,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.use('/api', notFound);
 
