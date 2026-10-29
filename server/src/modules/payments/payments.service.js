@@ -6,12 +6,21 @@ const { METHODS } = require('./payments.validation');
 const { SESSION_STATUS } = require('../parking/sessionStatuses');
 
 // We have no real payment provider, so this stands in for one (documented in the PR):
-// UPI and cash always succeed; a card number ending in 0002 is declined.
+// cash always succeeds; a card number ending in 0002 and the UPI ID failure@upi are
+// declined, so a failed payment can be tried in the app.
 const DECLINED_CARD_ENDING = '0002';
+const DECLINED_UPI_ID = 'failure@upi';
 
-function gatewayAccepts({ method, cardNumber }) {
-  return !(method === 'card' && cardNumber.endsWith(DECLINED_CARD_ENDING));
+function gatewayAccepts({ method, cardNumber, upiId }) {
+  if (method === 'card') return !cardNumber.endsWith(DECLINED_CARD_ENDING);
+  if (method === 'upi') return upiId !== DECLINED_UPI_ID;
+  return true;
 }
+
+const DECLINED_MESSAGES = {
+  card: 'Payment was declined. Try another card or method.',
+  upi: 'UPI payment failed. Try again or pay another way.',
+};
 
 // FR-10: drivers do not see cash, which only the attendant can take.
 function listMethods(user) {
@@ -24,7 +33,7 @@ function listMethods(user) {
 // try again or come back and pay another way. The amount always comes from the session,
 // never from the request. A driver pays only for their own vehicles; an attendant or
 // administrator can take payment for any session (e.g. cash at the gate).
-async function pay(user, { sessionId, method, cardNumber }) {
+async function pay(user, { sessionId, method, cardNumber, upiId }) {
   const isDriver = user.role === ROLES.DRIVER;
 
   if (isDriver && method === 'cash') {
@@ -52,7 +61,7 @@ async function pay(user, { sessionId, method, cardNumber }) {
       throw new HttpError(409, 'This session has already been paid');
     }
 
-    declined = !gatewayAccepts({ method, cardNumber });
+    declined = !gatewayAccepts({ method, cardNumber, upiId });
     const paymentId = await payments.createPayment(connection, {
       sessionId: session.id,
       amount: session.fee,
@@ -81,7 +90,7 @@ async function pay(user, { sessionId, method, cardNumber }) {
   }
 
   // The failed attempt is already saved; now tell the user (IT-10_03).
-  if (declined) throw new HttpError(402, 'Payment was declined. Try another card or method.');
+  if (declined) throw new HttpError(402, DECLINED_MESSAGES[method]);
   return result;
 }
 
