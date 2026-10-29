@@ -149,7 +149,7 @@ export default function ReportsPage() {
                     <th scope="col">Date</th>
                     <th scope="col">Entries</th>
                     <th scope="col">Exits</th>
-                    <th scope="col">Reservations</th>
+                    <th scope="col" title="Reservations"><span className="hide-narrow">Reservations</span><span className="show-narrow">Res.</span></th>
                     <th scope="col">Revenue</th>
                   </tr>
                 </thead>
