@@ -1,8 +1,9 @@
 const db = require('../../db');
+const { ON_SITE_SQL } = require('../parking/sessionStatuses');
 
 // Status is worked out live, so it is right the moment a session or reservation changes (FR-03):
 //   Unavailable: an admin disabled the slot
-//   Occupied:    a vehicle has an active parking session in it
+//   Occupied:    a vehicle is in it: parked, or exited but not yet paid (UC-08)
 //   Reserved:    a reservation covers the current time
 //   Available:   none of the above
 // The reserved rule matches parking.repository.findAvailableSlot.
@@ -14,7 +15,7 @@ const SLOT_COLUMNS = `
       SELECT 1
       FROM parking_sessions session
       WHERE session.slot_id = parking_slots.id
-        AND session.status = 'active'
+        AND session.status IN ${ON_SITE_SQL}
     ) THEN 'occupied'
     WHEN EXISTS (
       SELECT 1
