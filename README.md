@@ -111,6 +111,7 @@ once on an existing dev database (a fresh `db:reset` already includes them):
 
 - `001-login-lockout.sql`: login lockout columns on `users`
 - `002-session-fees.sql`: fee and payment status columns on `parking_sessions` (#66, #68)
+- `003-awaiting-payment.sql`: `awaiting_payment` session status, so a session completes only once paid
 
 ```
 Get-Content database\migrations\002-session-fees.sql | mysql -u parking_app -p parking_dev

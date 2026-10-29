@@ -107,7 +107,8 @@ CREATE TABLE IF NOT EXISTS parking_sessions (
   exit_time DATETIME NULL,
   fee_amount INT UNSIGNED NULL,
   billed_minutes INT UNSIGNED NULL,
-  status ENUM('active', 'completed') NOT NULL DEFAULT 'active',
+  -- active -> awaiting_payment (exit recorded, fee fixed) -> completed (paid, slot released)
+  status ENUM('active', 'awaiting_payment', 'completed') NOT NULL DEFAULT 'active',
   payment_status ENUM('unpaid', 'paid') NOT NULL DEFAULT 'unpaid',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
