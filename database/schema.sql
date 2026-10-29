@@ -121,6 +121,23 @@ CREATE TABLE IF NOT EXISTS parking_sessions (
     CHECK (exit_time IS NULL OR exit_time >= entry_time)
 );
 
+-- FR-10 / SYS-13: every payment attempt for a completed session, paid or failed.
+-- Only the last 4 digits of a card are kept; never the full number or expiry (NFR-18).
+CREATE TABLE IF NOT EXISTS payments (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  session_id INT UNSIGNED NOT NULL,
+  amount INT UNSIGNED NOT NULL,
+  method ENUM('cash', 'upi', 'card') NOT NULL,
+  status ENUM('paid', 'failed') NOT NULL,
+  card_last4 CHAR(4) NULL,
+  recorded_by INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_payments_session (session_id),
+  CONSTRAINT fk_payments_session FOREIGN KEY (session_id) REFERENCES parking_sessions (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_payments_user FOREIGN KEY (recorded_by) REFERENCES users (id) ON DELETE RESTRICT
+);
+
 
 -- ---------------------------------------------------------------------------
 -- Rates module (FR-12, FR-09)

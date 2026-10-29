@@ -85,6 +85,11 @@ export const api = {
   listUserVehicles: (id) => request('GET', `/admin/users/${id}/vehicles`),
   adminRemoveVehicle: (id) => request('DELETE', `/admin/vehicles/${id}`),
   // FR-11: parking history, one page at a time. Drivers read their own; admins read any user's.
+  // FR-10: pay for a completed session. payment: { sessionId, method, cardNumber?, cardExpiry? }.
+  // Drivers do not get cash; a declined card comes back as a 402.
+  paymentMethods: () => request('GET', '/payments/methods'),
+  pay: (payment) => request('POST', '/payments', payment),
+  unpaidSessions: () => request('GET', '/payments/unpaid'),
   myHistory: (page = 1, pageSize = 20) => request('GET', `/history?page=${page}&pageSize=${pageSize}`),
   userHistory: (userId, page = 1, pageSize = 20) =>
     request('GET', `/history/users/${userId}?page=${page}&pageSize=${pageSize}`),

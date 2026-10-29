@@ -4,6 +4,7 @@ import { api } from '../../api.js';
 import { SLOT_TYPE_LABELS } from '../../slots.js';
 import AppLayout from '../../components/AppLayout.jsx';
 import Field from '../../components/Field.jsx';
+import PaymentForm from '../payments/PaymentForm.jsx';
 
 // "135" -> "2 h 15 min"
 function formatMinutes(minutes) {
@@ -23,11 +24,13 @@ export default function VehicleExitPage() {
   const [notice, setNotice] = useState('');
   const [exit, setExit] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [paidMessage, setPaidMessage] = useState('');
 
   async function confirm(e) {
     e.preventDefault();
     setExit(null);
     setNotice('');
+    setPaidMessage('');
 
     if (!registration.trim()) {
       setFieldError('Enter a registration number');
@@ -95,7 +98,18 @@ export default function VehicleExitPage() {
               </tbody>
             </table>
 
-            {/* #42: the "Take payment" form goes here. */}
+            {/* #42 / FR-10: the attendant takes payment at the gate, cash included. */}
+            {exit.paymentStatus !== 'paid' && (
+              <PaymentForm
+                key={exit.id}
+                session={exit}
+                onPaid={(data) => {
+                  setExit({ ...exit, paymentStatus: 'paid' });
+                  setPaidMessage(data.message);
+                }}
+              />
+            )}
+            {paidMessage && <p className="alert alert-success" role="status">{paidMessage}</p>}
           </>
         )}
       </section>
