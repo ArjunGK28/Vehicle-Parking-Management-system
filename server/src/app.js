@@ -13,10 +13,27 @@ const ratesRoutes = require('./modules/rates/rates.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const historyRoutes = require('./modules/history/history.routes');
 const paymentsRoutes = require('./modules/payments/payments.routes');
+const auditRoutes = require('./modules/audit/audit.routes');
+const reportsRoutes = require('./modules/reports/reports.routes');
 
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
 
 const app = express();
+
+// NFR-18: do not announce the framework, and mark every API answer as private, so a
+// browser or proxy never keeps user or payment data. These run before the body parser,
+// so even a refused or broken request carries them.
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('X-Frame-Options', 'DENY');
+  res.set('Referrer-Policy', 'no-referrer');
+  next();
+});
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
@@ -42,6 +59,8 @@ app.use('/api/rates', ratesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/payments', paymentsRoutes);
+app.use('/api/audit', auditRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.use('/api', notFound);
 

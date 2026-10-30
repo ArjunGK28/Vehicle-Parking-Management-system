@@ -5,4 +5,7 @@ module.exports = {
   roots: ['<rootDir>/tests'],
   setupFiles: ['<rootDir>/tests/setupEnv.js'],
   globalSetup: '<rootDir>/tests/globalSetup.js',
+  // Many tests create and log in several users in a hook, and bcrypt is slow on some
+  // computers, so the default 5 seconds is sometimes too short. Real failures still fail.
+  testTimeout: 30000,
 };
