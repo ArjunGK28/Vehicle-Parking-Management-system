@@ -57,7 +57,7 @@ describe('adding a slot', () => {
 });
 
 describe('disabling a slot', () => {
-  test('IT_35: a disabled slot shows Unavailable and is not assignable', async () => {
+  test('IT-12_05: a disabled slot shows Unavailable and is not assignable', async () => {
     const slot = await addSlot('P-30');
     const other = await addSlot('P-31');
 

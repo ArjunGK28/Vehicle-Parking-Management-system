@@ -45,7 +45,7 @@ async function assign(vehicle = vehicleId) {
 }
 
 describe('automatic parking slot assignment (Issue #62)', () => {
-  test('assigns an available slot matching the vehicle type', async () => {
+  test('UT-06_01: assigns an available slot matching the vehicle type', async () => {
     await addSlot('P-10', 'four_wheeler');
     const suitableSlot = await addSlot('P-2', 'four_wheeler');
     await addSlot('B-1', 'two_wheeler');
@@ -76,7 +76,7 @@ describe('automatic parking slot assignment (Issue #62)', () => {
     expect(res.body.error).toMatch(/No suitable parking slot/i);
   });
 
-  test('does not assign a disabled slot', async () => {
+  test('IT-06_04: does not assign a disabled slot', async () => {
     const slot = await addSlot('P-1');
     await admin.patch(`/api/slots/${slot.id}`).send({ disabled: true });
 
@@ -86,7 +86,7 @@ describe('automatic parking slot assignment (Issue #62)', () => {
     expect(res.body.error).toMatch(/No suitable parking slot/i);
   });
 
-  test('does not assign a slot with an active parking session', async () => {
+  test('IT-06_03: does not assign a slot with an active parking session', async () => {
     const occupiedSlot = await addSlot('P-1');
     const spareSlot = await addSlot('P-2');
 

@@ -1,4 +1,4 @@
-// Issue #4 (NFR-13, ST_01): 5 consecutive failed logins lock the account temporarily.
+// Issue #4 (NFR-13, ST-01_06): 5 consecutive failed logins lock the account temporarily.
 const request = require('supertest');
 const app = require('../../server/src/app');
 const { db, clearTables } = require('../helpers/db');
@@ -31,7 +31,7 @@ describe('locking', () => {
     expect((await login(good)).status).toBe(200);
   });
 
-  test('the 5th consecutive failed login locks the account with a clear message', async () => {
+  test('ST-01_06: the 5th consecutive failed login locks the account with a clear message', async () => {
     for (let i = 0; i < 4; i += 1) expect((await login(bad)).status).toBe(401);
     const res = await login(bad);
     expect(res.status).toBe(423);

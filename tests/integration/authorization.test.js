@@ -62,7 +62,7 @@ describe('NFR-11: each role has distinct access', () => {
     }
   }
 
-  test('IT_20: a driver trying a staff-only action (track vehicle) is denied', async () => {
+  test('IT-07_05: a driver trying a staff-only action (track vehicle) is denied', async () => {
     const res = await agents.driver.get('/sample/staff');
     expect(res.status).toBe(403);
   });
