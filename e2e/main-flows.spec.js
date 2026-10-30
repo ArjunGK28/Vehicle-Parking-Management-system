@@ -65,13 +65,51 @@ test.describe('main flows', () => {
     await expect(page.getByText(/Fee ₹\d+/).first()).toBeVisible();
   });
 
+  test('UPI fails at the exit and the attendant takes cash later from the waiting list (UC-08, FR-10)', async ({ page }) => {
+    await resetData({ vehicles: [{ plate: PLATE }] });
+    await login(page, ACCOUNTS.attendant);
+
+    await page.getByRole('link', { name: 'Vehicle entry' }).click();
+    await page.getByLabel('Registration number').fill(PLATE);
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Go to P-01')).toBeVisible();
+
+    // Exit is recorded and the vehicle waits for payment.
+    await page.getByRole('link', { name: 'Attendant dashboard' }).click();
+    await page.getByRole('link', { name: 'Vehicle exit' }).click();
+    await page.getByLabel('Registration number').fill(PLATE);
+    await page.getByRole('button', { name: 'Confirm exit' }).click();
+    await expect(page.getByRole('heading', { name: 'Exit summary' })).toBeVisible();
+
+    // UPI fails, so the vehicle stays in the waiting list.
+    await page.getByLabel('Payment method').selectOption('upi');
+    await page.getByLabel('UPI ID').fill('failure@upi');
+    await page.getByRole('button', { name: /^Pay ₹/ }).click();
+    await expect(page.getByText('UPI payment failed. Try again or pay another way.')).toBeVisible();
+
+    // The driver comes back later: the list survives a reload, and cash finishes the stay.
+    await page.reload();
+    const row = page.getByRole('row', { name: new RegExp(PLATE) });
+    await expect(row).toContainText('P-01');
+    await row.getByRole('button', { name: /Take payment/ }).click();
+    await page.getByLabel('Payment method').selectOption('cash');
+    await page.getByRole('button', { name: /^Pay ₹/ }).click();
+
+    await expect(page.getByText(/Slot P-01 is now free/)).toBeVisible();
+    await expect(page.getByText('No vehicles are waiting to pay.')).toBeVisible();
+  });
+
   test('a driver sees a finished stay in parking history (UC-11)', async ({ page, request }) => {
     await resetData({ vehicles: [{ plate: PLATE }] });
 
     // The attendant's part is done through the API; this test is about the driver's page.
     await request.post('/api/auth/login', { data: { email: ACCOUNTS.attendant.email, password: ACCOUNTS.attendant.password } });
     expect((await request.post('/api/parking/entry', { data: { registrationNumber: PLATE } })).status()).toBe(201);
-    expect((await request.post('/api/parking/exit', { data: { registrationNumber: PLATE } })).status()).toBe(200);
+    const exit = await request.post('/api/parking/exit', { data: { registrationNumber: PLATE } });
+    expect(exit.status()).toBe(200);
+    // A stay is finished, and so in history, only once it is paid (UC-08).
+    const sessionId = (await exit.json()).session.id;
+    expect((await request.post('/api/payments', { data: { sessionId, method: 'cash' } })).status()).toBe(201);
 
     await login(page, ACCOUNTS.driver);
     await page.getByRole('link', { name: 'Parking history' }).click();
