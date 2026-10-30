@@ -1,4 +1,5 @@
 const db = require('../../db');
+const { SESSION_STATUS } = require('../parking/sessionStatuses');
 
 // The session as the exit response shows it, so the pages can reuse one shape.
 const SESSION_COLUMNS = `
@@ -42,9 +43,10 @@ async function createPayment(connection, { sessionId, amount, method, status, ca
   return result.insertId;
 }
 
-async function markSessionPaid(connection, sessionId) {
+// UC-08 steps 3 and 4: payment completes the session, which releases its slot.
+async function completePaidSession(connection, sessionId) {
   await connection.query(
-    "UPDATE parking_sessions SET payment_status = 'paid' WHERE id = ?",
+    `UPDATE parking_sessions SET payment_status = 'paid', status = '${SESSION_STATUS.COMPLETED}' WHERE id = ?`,
     [sessionId],
   );
 }
@@ -66,7 +68,7 @@ async function findPayment(connection, paymentId) {
   return rows[0];
 }
 
-// The driver's completed sessions that still need paying, newest exit first.
+// The driver's sessions that have exited and still need paying, newest exit first.
 async function findUnpaidForUser(userId) {
   const [rows] = await db.query(
     `SELECT ${SESSION_COLUMNS}
@@ -74,8 +76,7 @@ async function findUnpaidForUser(userId) {
      JOIN vehicles v ON v.id = s.vehicle_id
      JOIN parking_slots ps ON ps.id = s.slot_id
      WHERE v.user_id = ?
-       AND s.status = 'completed'
-       AND s.payment_status = 'unpaid'
+       AND s.status = '${SESSION_STATUS.AWAITING_PAYMENT}'
      ORDER BY s.exit_time DESC, s.id DESC`,
     [userId],
   );
@@ -83,4 +84,33 @@ async function findUnpaidForUser(userId) {
   return rows;
 }
 
-module.exports = { lockSession, createPayment, markSessionPaid, findPayment, findUnpaidForUser };
+// UC-08: every vehicle whose exit is recorded but not yet paid, longest wait first, so
+// the attendant can take payment when a driver comes back (for example with cash
+// after UPI failed). waitingMinutes is how long ago the exit was recorded.
+async function findAwaitingPayment() {
+  const [rows] = await db.query(
+    `SELECT ${SESSION_COLUMNS},
+            TIMESTAMPDIFF(MINUTE, s.exit_time, NOW()) AS waitingMinutes,
+            (SELECT COUNT(*) FROM payments p WHERE p.session_id = s.id AND p.status = 'failed') AS failedAttempts
+     FROM parking_sessions s
+     JOIN vehicles v ON v.id = s.vehicle_id
+     JOIN parking_slots ps ON ps.id = s.slot_id
+     WHERE s.status = '${SESSION_STATUS.AWAITING_PAYMENT}'
+     ORDER BY s.exit_time, s.id`,
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    waitingMinutes: Math.max(0, Number(row.waitingMinutes)),
+    failedAttempts: Number(row.failedAttempts),
+  }));
+}
+
+module.exports = {
+  lockSession,
+  createPayment,
+  completePaidSession,
+  findPayment,
+  findUnpaidForUser,
+  findAwaitingPayment,
+};

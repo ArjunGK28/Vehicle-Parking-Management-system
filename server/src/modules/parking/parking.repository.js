@@ -1,4 +1,5 @@
 const db = require('../../db');
+const { SESSION_STATUS, ON_SITE_SQL } = require('./sessionStatuses');
 
 async function findVehicleById(vehicleId, userId = null) {
   const query = userId
@@ -40,15 +41,15 @@ async function findSessionEntryTime(connection, sessionId) {
   return rows[0].entryTime;
 }
 
-// A slot is free when it is enabled, has no active session, and no reservation
-// covers the current time.
+// A slot is free when it is enabled, no vehicle is in it (parked, or exited but not
+// yet paid), and no reservation covers the current time.
 const SLOT_IS_FREE = `
   ps.is_disabled = FALSE
   AND NOT EXISTS (
     SELECT 1
     FROM parking_sessions session
     WHERE session.slot_id = ps.id
-      AND session.status = 'active'
+      AND session.status IN ${ON_SITE_SQL}
   )
   AND NOT EXISTS (
     SELECT 1
@@ -103,13 +104,13 @@ async function findAvailableSlot(connection, vehicleType) {
   return null;
 }
 
-// Checks whether the vehicle already has an active parking session.
-async function findActiveSessionForVehicle(connection, vehicleId) {
+// The vehicle's session if it is still on site: parked, or exited and waiting to pay.
+async function findOnSiteSessionForVehicle(connection, vehicleId) {
   const [rows] = await connection.query(
-    `SELECT id, slot_id
+    `SELECT id, slot_id, status
      FROM parking_sessions
      WHERE vehicle_id = ?
-       AND status = 'active'
+       AND status IN ${ON_SITE_SQL}
      LIMIT 1`,
     [vehicleId],
   );
@@ -128,12 +129,14 @@ async function createParkingSession(connection, vehicleId, slotId) {
   return result.insertId;
 }
 
-// FR-07: the vehicle with this registration number and its current active session.
-// Always read from the table, so a slot change is seen straight away.
-async function findActiveSessionByRegistration(registrationNumber) {
+// FR-07: the vehicle with this registration number and its session while it is on
+// site (parked, or waiting to pay). Always read from the table, so a slot change is
+// seen straight away.
+async function findOnSiteSessionByRegistration(registrationNumber) {
   const [rows] = await db.query(
     `SELECT s.id AS sessionId,
             s.slot_id AS slotId,
+            s.status,
             s.entry_time AS entryTime,
             v.id AS vehicleId,
             v.registration_number AS registrationNumber,
@@ -141,7 +144,7 @@ async function findActiveSessionByRegistration(registrationNumber) {
             v.model,
             v.colour
      FROM vehicles v
-     JOIN parking_sessions s ON s.vehicle_id = v.id AND s.status = 'active'
+     JOIN parking_sessions s ON s.vehicle_id = v.id AND s.status IN ${ON_SITE_SQL}
      WHERE v.registration_number = ?
      ORDER BY s.entry_time DESC, s.id DESC
      LIMIT 1`,
@@ -163,11 +166,13 @@ async function lockVehicleByRegistration(connection, registrationNumber) {
   return rows[0] ? rows[0].id : null;
 }
 
-// FR-08: the vehicle's active session with its slot. Read after the vehicle row is
-// locked, so a second exit sees the session the first one completed (DR-04, DR-10).
-async function findActiveSessionForExit(connection, vehicleId) {
+// FR-08: the vehicle's on-site session with its slot. Read after the vehicle row is
+// locked, so a second exit sees the exit the first one recorded (DR-04, DR-10).
+async function findOnSiteSessionForExit(connection, vehicleId) {
   const [rows] = await connection.query(
     `SELECT s.id,
+            s.status,
+            s.fee_amount AS fee,
             s.vehicle_id AS vehicleId,
             v.registration_number AS registrationNumber,
             s.slot_id AS slotId,
@@ -178,7 +183,7 @@ async function findActiveSessionForExit(connection, vehicleId) {
      JOIN vehicles v ON v.id = s.vehicle_id
      JOIN parking_slots ps ON ps.id = s.slot_id
      WHERE s.vehicle_id = ?
-       AND s.status = 'active'
+       AND s.status IN ${ON_SITE_SQL}
      ORDER BY s.id DESC
      LIMIT 1`,
     [vehicleId],
@@ -208,30 +213,31 @@ async function findExitTimes(connection, sessionId, exitTime) {
   };
 }
 
-// FR-08 / FR-09: completes the session with its exit time and fee.
-async function completeSession(connection, sessionId, { exitTime, feeAmount, billedMinutes }) {
+// FR-08 / FR-09: records the exit time and the fee. The session now waits for payment,
+// which completes it and releases the slot (UC-08 steps 3 and 4).
+async function recordExit(connection, sessionId, { exitTime, feeAmount, billedMinutes }) {
   await connection.query(
     `UPDATE parking_sessions
-     SET status = 'completed',
+     SET status = '${SESSION_STATUS.AWAITING_PAYMENT}',
          exit_time = ?,
          fee_amount = ?,
          billed_minutes = ?
      WHERE id = ?
-       AND status = 'active'`,
+       AND status = '${SESSION_STATUS.ACTIVE}'`,
     [exitTime, feeAmount, billedMinutes, sessionId],
   );
 }
 
 module.exports = {
   lockVehicleByRegistration,
-  findActiveSessionForExit,
+  findOnSiteSessionForExit,
   findExitTimes,
-  completeSession,
+  recordExit,
   findVehicleById,
   findVehicleByRegistration,
   findSessionEntryTime,
   findAvailableSlot,
-  findActiveSessionForVehicle,
+  findOnSiteSessionForVehicle,
   createParkingSession,
-  findActiveSessionByRegistration,
+  findOnSiteSessionByRegistration,
 };

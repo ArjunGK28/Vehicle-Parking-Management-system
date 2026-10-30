@@ -86,16 +86,34 @@ describe('a driver views their own history', () => {
     ]);
   });
 
-  test('a stay recorded through entry and exit appears in history with the fee shown on exit', async () => {
+  test('a stay recorded through entry, exit and payment appears in history with the fee shown on exit', async () => {
     const entry = await attendant.post('/api/parking/entry').send({ registrationNumber: 'KA01AB1234' });
     expect(entry.status).toBe(201);
     const exit = await attendant.post('/api/parking/exit').send({ registrationNumber: 'KA01AB1234' });
     expect(exit.status).toBe(200);
+    const paid = await attendant.post('/api/payments').send({ sessionId: exit.body.session.id, method: 'cash' });
+    expect(paid.status).toBe(201);
 
     const res = await driver.get('/api/history');
 
     expect(res.body.sessions).toHaveLength(1);
-    expect(res.body.sessions[0]).toMatchObject({ id: exit.body.session.id, fee: exit.body.session.fee, status: 'completed', slotCode: 'P-01' });
+    expect(res.body.sessions[0]).toMatchObject({
+      id: exit.body.session.id,
+      fee: exit.body.session.fee,
+      status: 'completed',
+      paymentStatus: 'paid',
+      slotCode: 'P-01',
+    });
+  });
+
+  test('a stay that has exited but is still waiting for payment is not history yet', async () => {
+    expect((await attendant.post('/api/parking/entry').send({ registrationNumber: 'KA01AB1234' })).status).toBe(201);
+    expect((await attendant.post('/api/parking/exit').send({ registrationNumber: 'KA01AB1234' })).status).toBe(200);
+
+    const res = await driver.get('/api/history');
+
+    expect(res.body.sessions).toEqual([]);
+    expect(res.body.total).toBe(0);
   });
 
   test('a stay that has not ended yet is not history', async () => {
@@ -156,6 +174,7 @@ describe('past sessions cannot be edited (DR-10)', () => {
     await attendant.post('/api/parking/entry').send({ registrationNumber: 'KA01AB1234' });
     const first = await attendant.post('/api/parking/exit').send({ registrationNumber: 'KA01AB1234' });
     expect(first.status).toBe(200);
+    expect((await attendant.post('/api/payments').send({ sessionId: first.body.session.id, method: 'cash' })).status).toBe(201);
 
     const again = await attendant.post('/api/parking/exit').send({ registrationNumber: 'KA01AB1234', exitTime: '2026-01-01 00:00' });
 

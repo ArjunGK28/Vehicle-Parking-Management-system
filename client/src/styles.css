@@ -115,6 +115,7 @@ button.secondary {
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+.panel + .panel { margin-top: 1rem; }
 .badge {
   display: inline-block;
   margin-left: 0.4rem;

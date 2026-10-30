@@ -11,11 +11,23 @@ const fieldsOf = (body) => {
 };
 
 describe('payment validation (FR-10)', () => {
-  test('UPI and cash need only the session and method', () => {
-    expect(validatePayment({ sessionId: 12, method: 'upi' }, NOW)).toEqual({ sessionId: 12, method: 'upi', cardNumber: null });
-    expect(validatePayment({ sessionId: '12', method: 'cash', cardNumber: '4111111111111111' }, NOW))
-      .toEqual({ sessionId: 12, method: 'cash', cardNumber: null });
+  test('cash needs only the session and method; other details are dropped', () => {
+    expect(validatePayment({ sessionId: '12', method: 'cash', cardNumber: '4111111111111111', upiId: 'a@b' }, NOW))
+      .toEqual({ sessionId: 12, method: 'cash', cardNumber: null, upiId: null });
   });
+
+  test('UPI needs a UPI ID, which is trimmed and lower-cased', () => {
+    expect(validatePayment({ sessionId: 12, method: 'upi', upiId: ' Arjun.K@OKAXIS ' }, NOW))
+      .toEqual({ sessionId: 12, method: 'upi', cardNumber: null, upiId: 'arjun.k@okaxis' });
+    expect(validatePayment({ sessionId: 12, method: 'upi', upiId: '98450.12345@ybl' }, NOW).upiId).toBe('98450.12345@ybl');
+  });
+
+  test.each([undefined, '', 'arjun', 'arjun@', '@okaxis', 'ar jun@okaxis', 'arjun@ok axis', 'arjun@1bank', 42])(
+    'the UPI ID %p is rejected',
+    (upiId) => {
+      expect(fieldsOf({ sessionId: 1, method: 'upi', upiId })).toEqual({ upiId: 'Enter a UPI ID such as name@bank' });
+    },
+  );
 
   test('a card number is cleaned of spaces and hyphens', () => {
     expect(validatePayment({ sessionId: 1, method: 'card', cardNumber: '4111 1111-1111 1111', cardExpiry: '12/30' }, NOW).cardNumber)
@@ -53,6 +65,6 @@ describe('payment validation (FR-10)', () => {
       sessionId: 'Choose a parking session to pay for',
       method: 'Choose a payment method',
     });
-    expect(fieldsOf({ sessionId: '1abc', method: 'upi' })).toEqual({ sessionId: 'Choose a parking session to pay for' });
+    expect(fieldsOf({ sessionId: '1abc', method: 'upi', upiId: 'arjun@okaxis' })).toEqual({ sessionId: 'Choose a parking session to pay for' });
   });
 });

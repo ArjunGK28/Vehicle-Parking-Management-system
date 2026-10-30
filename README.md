@@ -88,6 +88,29 @@ Open http://localhost:5173. The client forwards `/api` requests to the server on
 To run it as one server instead, build the client first (`npm run build`), then
 `npm start -w server` and open http://localhost:4000.
 
+## Exit and payment
+
+A stay moves through three states (UC-08):
+
+| Session status | Meaning | Slot |
+|---|---|---|
+| `active` | The vehicle is parked | Occupied |
+| `awaiting_payment` | Exit is recorded and the fee is fixed, not paid yet | Still occupied |
+| `completed` | Paid | Released |
+
+If a payment fails (for example UPI is down), the vehicle stays in **Waiting for payment** on
+the attendant's Vehicle exit page. When the driver comes back, the attendant picks it from
+that list and takes cash. The fee does not grow while they wait, and the vehicle cannot enter
+again until the stay is paid.
+
+There is no real payment provider; a simulated gateway stands in for one:
+
+| Method | Succeeds | Declined (to try a failed payment) |
+|---|---|---|
+| Cash | Always (staff only) | |
+| UPI | Any UPI ID, e.g. `arjun@okaxis` | `failure@upi` |
+| Card | `4111 1111 1111 1111`, any future expiry | `4000 0000 0000 0002` |
+
 ## Tests
 
 ```
@@ -111,6 +134,7 @@ once on an existing dev database (a fresh `db:reset` already includes them):
 
 - `001-login-lockout.sql`: login lockout columns on `users`
 - `002-session-fees.sql`: fee and payment status columns on `parking_sessions` (#66, #68)
+- `003-awaiting-payment.sql`: `awaiting_payment` session status, so a session completes only once paid
 
 ```
 Get-Content database\migrations\002-session-fees.sql | mysql -u parking_app -p parking_dev

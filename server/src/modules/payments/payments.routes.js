@@ -15,4 +15,7 @@ router.post('/', allowRoles(ROLES.DRIVER, ROLES.ATTENDANT, ROLES.ADMIN), control
 // The logged-in driver's completed sessions that still need paying.
 router.get('/unpaid', allowRoles(ROLES.DRIVER), controller.unpaid);
 
+// Staff: every vehicle whose exit is recorded but not paid yet (UC-08).
+router.get('/awaiting', allowRoles(ROLES.ATTENDANT, ROLES.ADMIN), controller.awaiting);
+
 module.exports = router;

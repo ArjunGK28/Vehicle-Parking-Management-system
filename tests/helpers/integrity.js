@@ -1,15 +1,17 @@
 const { db } = require('./db');
 const { calculateFee } = require('../../server/src/modules/rates/fees');
+const { ON_SITE_SQL } = require('../../server/src/modules/parking/sessionStatuses');
 
 // Looks for rows that break the relationships and rules the data must always keep
 // (NFR-06, NFR-09, DR-02, DR-07, DR-10). Returns a list of problems; [] means the
 // data is consistent, so a test can `expect(await findIntegrityProblems()).toEqual([])`
 // and see exactly what is wrong when it is not.
 const CHECKS = [
-  ['a slot has more than one active session',
-    `SELECT slot_id AS id FROM parking_sessions WHERE status = 'active' GROUP BY slot_id HAVING COUNT(*) > 1`],
-  ['a vehicle has more than one active session',
-    `SELECT vehicle_id AS id FROM parking_sessions WHERE status = 'active' GROUP BY vehicle_id HAVING COUNT(*) > 1`],
+  // On site = parked or waiting to pay; both hold the slot (UC-08).
+  ['a slot has more than one vehicle on site',
+    `SELECT slot_id AS id FROM parking_sessions WHERE status IN ${ON_SITE_SQL} GROUP BY slot_id HAVING COUNT(*) > 1`],
+  ['a vehicle has more than one session on site',
+    `SELECT vehicle_id AS id FROM parking_sessions WHERE status IN ${ON_SITE_SQL} GROUP BY vehicle_id HAVING COUNT(*) > 1`],
   ['a session points to a vehicle that does not exist',
     `SELECT s.id FROM parking_sessions s LEFT JOIN vehicles v ON v.id = s.vehicle_id WHERE v.id IS NULL`],
   ['a session points to a slot that does not exist',
@@ -28,15 +30,17 @@ const CHECKS = [
     `SELECT a.id FROM reservations a JOIN reservations b
         ON a.slot_id = b.slot_id AND a.id < b.id AND a.status = 'reserved' AND b.status = 'reserved'
        AND a.start_time < b.end_time AND b.start_time < a.end_time`],
-  ['a completed session is missing its exit time, fee or billed minutes, or exits before it entered',
+  ['an exited session is missing its exit time, fee or billed minutes, or exits before it entered',
     `SELECT id FROM parking_sessions
-      WHERE status = 'completed'
+      WHERE status IN ('awaiting_payment', 'completed')
         AND (exit_time IS NULL OR fee_amount IS NULL OR billed_minutes IS NULL OR exit_time < entry_time)`],
   ['an active session already has an exit time or a fee',
     `SELECT id FROM parking_sessions
       WHERE status = 'active' AND (exit_time IS NOT NULL OR fee_amount IS NOT NULL OR billed_minutes IS NOT NULL)`],
   ['a session is marked paid before it is completed',
     `SELECT id FROM parking_sessions WHERE payment_status = 'paid' AND status <> 'completed'`],
+  ['a session is completed without being paid (UC-08)',
+    `SELECT id FROM parking_sessions WHERE status = 'completed' AND payment_status <> 'paid'`],
   ['a vehicle is parked in a slot of a different type (DR-07)',
     `SELECT s.id FROM parking_sessions s
        JOIN vehicles v ON v.id = s.vehicle_id
@@ -44,7 +48,7 @@ const CHECKS = [
       WHERE v.type <> p.slot_type`],
 ];
 
-// A completed session's fee must be what the configured rate gives for its stay (FR-09).
+// An exited session's fee must be what the configured rate gives for its stay (FR-09).
 // Skipped for slot types that have no rate row.
 async function feeProblems() {
   const [rows] = await db.query(
@@ -54,7 +58,7 @@ async function feeProblems() {
        FROM parking_sessions s
        JOIN parking_slots p ON p.id = s.slot_id
        JOIN parking_rates r ON r.slot_type = p.slot_type
-      WHERE s.status = 'completed' AND s.fee_amount IS NOT NULL AND s.exit_time IS NOT NULL`,
+      WHERE s.status IN ('awaiting_payment', 'completed') AND s.fee_amount IS NOT NULL AND s.exit_time IS NOT NULL`,
   );
   return rows
     .filter((row) => {
@@ -71,7 +75,7 @@ async function findIntegrityProblems() {
     if (rows.length > 0) problems.push(`${message}: ids ${rows.map((r) => r.id).join(', ')}`);
   }
   const wrongFees = await feeProblems();
-  if (wrongFees.length > 0) problems.push(`a completed session's fee does not match the rate: ids ${wrongFees.join(', ')}`);
+  if (wrongFees.length > 0) problems.push(`an exited session's fee does not match the rate: ids ${wrongFees.join(', ')}`);
   return problems;
 }
 

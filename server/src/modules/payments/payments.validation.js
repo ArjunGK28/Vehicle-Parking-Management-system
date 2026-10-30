@@ -46,15 +46,24 @@ function parseExpiry(raw) {
   return { month, year: 2000 + Number(match[2]) };
 }
 
+// UPI ID (VPA) such as "arjun@okaxis" or "98450.12345@ybl"; trimmed and lower-cased.
+const UPI_ID = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9]{1,63}$/;
+
+function cleanUpiId(raw) {
+  if (typeof raw !== 'string') return null;
+  const id = raw.trim().toLowerCase();
+  return UPI_ID.test(id) ? id : null;
+}
+
 function isExpired({ month, year }, now) {
   const thisYear = now.getFullYear();
   const thisMonth = now.getMonth() + 1;
   return year < thisYear || (year === thisYear && month < thisMonth);
 }
 
-// FR-10: returns clean { sessionId, method, cardNumber } or throws a 400 with per-field
-// messages. cardNumber is only kept for card payments; the expiry is checked, never returned,
-// so it cannot reach the database (NFR-18).
+// FR-10: returns clean { sessionId, method, cardNumber, upiId } or throws a 400 with
+// per-field messages. cardNumber is only kept for card payments and upiId for UPI; the
+// expiry is checked, never returned, so it cannot reach the database (NFR-18).
 function validatePayment(body = {}, now = new Date()) {
   const fields = {};
 
@@ -65,6 +74,11 @@ function validatePayment(body = {}, now = new Date()) {
   if (!METHOD_IDS.includes(method)) fields.method = 'Choose a payment method';
 
   let cardNumber = null;
+  let upiId = null;
+  if (method === 'upi') {
+    upiId = cleanUpiId(body.upiId);
+    if (!upiId) fields.upiId = 'Enter a UPI ID such as name@bank';
+  }
   if (method === 'card') {
     cardNumber = cleanCardNumber(body.cardNumber);
     if (!cardNumber) fields.cardNumber = 'Enter a valid card number';
@@ -78,7 +92,7 @@ function validatePayment(body = {}, now = new Date()) {
     throw new HttpError(400, 'Please correct the highlighted fields', fields);
   }
 
-  return { sessionId, method, cardNumber };
+  return { sessionId, method, cardNumber, upiId };
 }
 
 module.exports = { METHODS, validatePayment, passesLuhn };

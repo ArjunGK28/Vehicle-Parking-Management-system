@@ -28,6 +28,16 @@ const vehicleIdByPlate = {};
 
 const enter = (registrationNumber) => attendant.post('/api/parking/entry').send({ registrationNumber });
 const exit = (registrationNumber) => attendant.post('/api/parking/exit').send({ registrationNumber });
+// A vehicle leaves for good: exit is recorded, then cash completes the session and frees
+// the slot (UC-08). Resolves with the exit response.
+async function leave(registrationNumber) {
+  const out = await exit(registrationNumber);
+  if (out.status === 200) {
+    const paid = await attendant.post('/api/payments').send({ sessionId: out.body.session.id, method: 'cash' });
+    if (paid.status !== 201) throw new Error(`payment for ${registrationNumber} failed with ${paid.status}`);
+  }
+  return out;
+}
 const statuses = (responses) => responses.map((res) => res.status);
 const count = (list, value) => list.filter((x) => x === value).length;
 
@@ -151,7 +161,11 @@ describe('availability (NFR-03)', () => {
 });
 
 describe('simultaneous operations keep slot and session data consistent (NFR-06)', () => {
-  beforeEach(() => db.query('DELETE FROM parking_sessions'));
+  // Payments point at sessions, so they go first.
+  beforeEach(async () => {
+    await db.query('DELETE FROM payments');
+    await db.query('DELETE FROM parking_sessions');
+  });
   afterEach(async () => {
     expect(await findIntegrityProblems()).toEqual([]);
   });
@@ -177,16 +191,16 @@ describe('simultaneous operations keep slot and session data consistent (NFR-06)
     expect(list.body.slots.every((s) => s.status === 'occupied')).toBe(true);
   });
 
-  test('the same vehicle exiting 10 times at once is completed once, with one fee', async () => {
+  test('the same vehicle exiting 10 times at once records one exit, with one fee', async () => {
     expect((await enter(carPlate(2))).status).toBe(201);
 
     const results = await Promise.all(Array.from({ length: 10 }, () => exit(carPlate(2))));
 
     expect(count(statuses(results), 200)).toBe(1);
-    expect(count(statuses(results), 404)).toBe(9);
+    expect(count(statuses(results), 409)).toBe(9); // already exited, waiting for payment
     const [rows] = await db.query("SELECT status, fee_amount AS fee FROM parking_sessions WHERE vehicle_id = ?", [vehicleIdByPlate[carPlate(2)]]);
     expect(rows).toHaveLength(1);
-    expect(rows[0].status).toBe('completed');
+    expect(rows[0].status).toBe('awaiting_payment');
     expect(rows[0].fee).toBeGreaterThan(0);
   });
 
@@ -221,8 +235,8 @@ describe('simultaneous operations keep slot and session data consistent (NFR-06)
       const refused = firstWave.filter((r) => r.res.status !== 201).map((r) => r.plate);
       everything.push(...firstWave.map((r) => r.res));
 
-      // The parked ones leave while the refused ones try again.
-      const secondWave = await Promise.all([...parked.map((p) => exit(p)), ...refused.map((p) => enter(p))]);
+      // The parked ones leave (exit and pay) while the refused ones try again.
+      const secondWave = await Promise.all([...parked.map((p) => leave(p)), ...refused.map((p) => enter(p))]);
       everything.push(...secondWave);
       expect(statuses(secondWave.slice(0, parked.length))).toEqual(parked.map(() => 200));
 
@@ -232,7 +246,7 @@ describe('simultaneous operations keep slot and session data consistent (NFR-06)
       expect(await findIntegrityProblems()).toEqual([]);
 
       // Everyone still parked leaves, ready for the next round.
-      const leaving = await Promise.all(active.map((s) => exit(s.plate)));
+      const leaving = await Promise.all(active.map((s) => leave(s.plate)));
       expect(statuses(leaving)).toEqual(active.map(() => 200));
     }
 
@@ -264,9 +278,13 @@ describe('simultaneous operations keep slot and session data consistent (NFR-06)
 });
 
 describe('relationships stay accurate (NFR-09)', () => {
-  beforeEach(() => db.query('DELETE FROM parking_sessions'));
+  // Payments point at sessions, so they go first.
+  beforeEach(async () => {
+    await db.query('DELETE FROM payments');
+    await db.query('DELETE FROM parking_sessions');
+  });
 
-  test('a stay leaves a complete record: vehicle, slot, times, fee and an unpaid status', async () => {
+  test('a stay leaves a complete record: vehicle, slot, times, fee, then paid and completed', async () => {
     const entry = await enter(carPlate(3));
     const out = await exit(carPlate(3));
     expect(out.status).toBe(200);
@@ -280,21 +298,27 @@ describe('relationships stay accurate (NFR-09)', () => {
     expect(row).toMatchObject({
       vehicleId: vehicleIdByPlate[carPlate(3)],
       slotId: entry.body.session.slotId,
-      status: 'completed',
+      status: 'awaiting_payment',
       fee: out.body.session.fee,
       paymentStatus: 'unpaid',
     });
     expect(row.exitTime).toBeTruthy();
     expect(await findIntegrityProblems()).toEqual([]);
+
+    const paid = await attendant.post('/api/payments').send({ sessionId: out.body.session.id, method: 'cash' });
+    expect(paid.status).toBe(201);
+    const [[after]] = await db.query('SELECT status, payment_status AS paymentStatus FROM parking_sessions WHERE id = ?', [out.body.session.id]);
+    expect(after).toEqual({ status: 'completed', paymentStatus: 'paid' });
+    expect(await findIntegrityProblems()).toEqual([]);
   });
 
-  test('the checker finds a slot with two active sessions when one is planted', async () => {
+  test('the checker finds a slot with two vehicles in it when one is planted', async () => {
     const first = await enter(carPlate(4));
     expect(first.status).toBe(201);
     await db.query('INSERT INTO parking_sessions (vehicle_id, slot_id) VALUES (?, ?)', [vehicleIdByPlate[carPlate(5)], first.body.session.slotId]);
 
     const problems = await findIntegrityProblems();
-    expect(problems).toEqual([expect.stringContaining('a slot has more than one active session')]);
+    expect(problems).toEqual([expect.stringContaining('a slot has more than one vehicle on site')]);
   });
 
   test('the checker finds a wrong fee when one is planted', async () => {
