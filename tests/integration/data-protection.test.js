@@ -59,6 +59,9 @@ const ROUTES = [
   ['GET', '/api/payments/methods', EVERYONE],
   ['POST', '/api/payments', EVERYONE],
   ['GET', '/api/payments/unpaid', [DRIVER]],
+
+  ['GET', '/api/audit', [ADMIN]],
+  ['GET', '/api/reports/occupancy', [ADMIN]],
 ];
 
 // An id and a type that do not exist, so calling a route as an allowed role changes nothing.
@@ -241,12 +244,22 @@ describe("one user cannot reach another user's data", () => {
     }
     expect((await admin.get(`/api/history/users/${userA.id}`)).body.sessions.map((s) => s.id)).toEqual([sessionA]);
   });
+
+  test('the audit log and the reports are for administrators only', async () => {
+    for (const agent of [driverA, driverB, attendant]) {
+      expect((await agent.get('/api/audit')).status).toBe(403);
+      expect((await agent.get('/api/reports/occupancy?from=2026-10-01&to=2026-10-31')).status).toBe(403);
+    }
+    expect((await anonymous.get('/api/audit')).status).toBe(401);
+    expect((await anonymous.get('/api/reports/occupancy?from=2026-10-01&to=2026-10-31')).status).toBe(401);
+  });
 });
 
 describe('confidential values never come back, and are never stored or logged', () => {
   const CARD = '4111 1111 1111 1111';
   const CARD_DIGITS = '4111111111111111';
   const EXPIRY = '12/40';
+  const NEW_USER_PASSWORD = 'Zq9!Audit-Secret';
   const FORBIDDEN = ['passwordHash', 'password_hash', '$2b$', '$2a$', 'tokenHash', 'token_hash', 'failedLoginAttempts', 'lockedUntil', 'isLocked', 'lockSecondsLeft'];
 
   let driver;
@@ -291,10 +304,14 @@ describe('confidential values never come back, and are never stored or logged', 
     expect(paid.status).toBe(201);
     record(await driver.post('/api/auth/login').send({ email: driverUser.email, password: 'wrong-pass' }));
 
+    // An administrator action that is written to the audit log, with a password in the request.
+    const added = record(await admin.post('/api/admin/users').send({ name: 'Gate Two', email: 'gate2@example.com', password: NEW_USER_PASSWORD, role: 'attendant' }));
+    expect(added.status).toBe(201);
+
     for (const [agent, urls] of [
       [driver, ['/api/auth/me', '/api/vehicles', `/api/vehicles/${vehicle.body.vehicle.id}`, '/api/history', '/api/reservations', '/api/payments/methods', '/api/slots']],
       [attendant, ['/api/auth/me', '/api/parking/locate?registrationNumber=KA03EF3333', '/api/slots']],
-      [admin, ['/api/auth/me', '/api/admin/users', `/api/admin/users/${driverUser.id}/vehicles`, `/api/history/users/${driverUser.id}`, '/api/rates', '/api/slots']],
+      [admin, ['/api/auth/me', '/api/admin/users', `/api/admin/users/${driverUser.id}/vehicles`, `/api/history/users/${driverUser.id}`, '/api/rates', '/api/slots', '/api/audit', '/api/reports/occupancy?from=2026-10-01&to=2026-10-31']],
     ]) {
       for (const url of urls) record(await agent.get(url));
     }
@@ -305,7 +322,7 @@ describe('confidential values never come back, and are never stored or logged', 
   test('no response holds a password hash, a lockout field, a session token or card details', () => {
     expect(bodies.length).toBeGreaterThan(15);
     const everything = bodies.join('\n');
-    for (const value of [...FORBIDDEN, sessionToken, CARD_DIGITS, CARD, EXPIRY, TEST_PASSWORD]) {
+    for (const value of [...FORBIDDEN, sessionToken, CARD_DIGITS, CARD, EXPIRY, TEST_PASSWORD, NEW_USER_PASSWORD]) {
       expect(everything).not.toContain(value);
     }
   });
@@ -329,12 +346,25 @@ describe('confidential values never come back, and are never stored or logged', 
       const [rows] = await db.query('SELECT * FROM ??', [name]);
       dump += JSON.stringify(rows);
     }
-    for (const value of [CARD_DIGITS, CARD, EXPIRY, TEST_PASSWORD, sessionToken]) expect(dump).not.toContain(value);
+    for (const value of [CARD_DIGITS, CARD, EXPIRY, TEST_PASSWORD, NEW_USER_PASSWORD, sessionToken]) expect(dump).not.toContain(value);
+  });
+
+  test('the audit log records who did what, but never a password', async () => {
+    const res = await admin.get('/api/audit');
+
+    expect(res.status).toBe(200);
+    expect(res.body.entries.map((e) => e.summary)).toEqual(expect.arrayContaining([expect.stringContaining('gate2@example.com')]));
+    expect(JSON.stringify(res.body)).not.toContain(NEW_USER_PASSWORD);
+    expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$/);
+
+    const [rows] = await db.query('SELECT * FROM audit_log');
+    expect(JSON.stringify(rows)).not.toContain(NEW_USER_PASSWORD);
+    expect(JSON.stringify(rows)).not.toMatch(/\$2[aby]\$/);
   });
 
   test('the password, session token and card details are not in the server logs', () => {
     const everything = logged.join('\n');
-    for (const value of [TEST_PASSWORD, 'wrong-pass', sessionToken, CARD_DIGITS, CARD, EXPIRY]) {
+    for (const value of [TEST_PASSWORD, NEW_USER_PASSWORD, 'wrong-pass', sessionToken, CARD_DIGITS, CARD, EXPIRY]) {
       expect(everything).not.toContain(value);
     }
   });
@@ -367,6 +397,8 @@ describe('private responses are marked so browsers and proxies do not keep them'
     ['a data response', (a) => a[DRIVER].get('/api/vehicles')],
     ['the profile', (a) => a[DRIVER].get('/api/auth/me')],
     ['a list of users', (a) => a[ADMIN].get('/api/admin/users')],
+    ['the audit log', (a) => a[ADMIN].get('/api/audit')],
+    ['a report', (a) => a[ADMIN].get('/api/reports/occupancy?from=2026-10-01&to=2026-10-31')],
     ['a reservations list', (a) => a[DRIVER].get('/api/reservations')],
     ['a refusal (401)', () => anonymous.get('/api/vehicles')],
     ['a refusal (403)', (a) => a[ATTENDANT].get('/api/admin/users')],
