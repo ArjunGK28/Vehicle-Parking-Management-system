@@ -59,6 +59,7 @@ const ROUTES = [
   ['GET', '/api/payments/methods', EVERYONE],
   ['POST', '/api/payments', EVERYONE],
   ['GET', '/api/payments/unpaid', [DRIVER]],
+  ['GET', '/api/payments/awaiting', [ATTENDANT, ADMIN]],
 
   ['GET', '/api/audit', [ADMIN]],
   ['GET', '/api/reports/occupancy', [ADMIN]],
@@ -148,6 +149,7 @@ describe("one user cannot reach another user's data", () => {
   let vehicleB;
   let sessionA;
   let sessionB;
+  let finishedA;
 
   async function vehicleFor(agent, registrationNumber) {
     const res = await agent.post('/api/vehicles').send({ registrationNumber, type: 'four_wheeler', model: 'Swift', colour: 'Red' });
@@ -155,13 +157,13 @@ describe("one user cannot reach another user's data", () => {
     return res.body.vehicle.id;
   }
 
-  // A finished, unpaid stay of 1 hour with a fee of 40.
-  async function unpaidStay(vehicleId, code) {
+  // A stay of 1 hour with a fee of 40, already exited: paid and finished, or still waiting for payment.
+  async function stay(vehicleId, code, { paid }) {
     const [slot] = await db.query("INSERT INTO parking_slots (code, slot_type) VALUES (?, 'four_wheeler')", [code]);
     const [session] = await db.query(
-      `INSERT INTO parking_sessions (vehicle_id, slot_id, entry_time, exit_time, status, fee_amount, billed_minutes)
-       VALUES (?, ?, NOW() - INTERVAL 2 HOUR, NOW() - INTERVAL 1 HOUR, 'completed', 40, 60)`,
-      [vehicleId, slot.insertId],
+      `INSERT INTO parking_sessions (vehicle_id, slot_id, entry_time, exit_time, status, payment_status, fee_amount, billed_minutes)
+       VALUES (?, ?, NOW() - INTERVAL 2 HOUR, NOW() - INTERVAL 1 HOUR, ?, ?, 40, 60)`,
+      [vehicleId, slot.insertId, paid ? 'completed' : 'awaiting_payment', paid ? 'paid' : 'unpaid'],
     );
     return session.insertId;
   }
@@ -176,8 +178,10 @@ describe("one user cannot reach another user's data", () => {
 
     vehicleA = await vehicleFor(driverA, 'KA01AB1111');
     vehicleB = await vehicleFor(driverB, 'KA02CD2222');
-    sessionA = await unpaidStay(vehicleA, 'P-1');
-    sessionB = await unpaidStay(vehicleB, 'P-2');
+    sessionA = await stay(vehicleA, 'P-1', { paid: false });
+    sessionB = await stay(vehicleB, 'P-2', { paid: false });
+    finishedA = await stay(vehicleA, 'P-3', { paid: true });
+    await stay(vehicleB, 'P-4', { paid: true });
   });
 
   test("another driver cannot read, change or delete a driver's vehicle", async () => {
@@ -207,8 +211,8 @@ describe("one user cannot reach another user's data", () => {
   });
 
   test("another driver cannot pay for a driver's session, and gets the same answer as for a missing one", async () => {
-    const theirs = await driverB.post('/api/payments').send({ sessionId: sessionA, method: 'upi' });
-    const missing = await driverB.post('/api/payments').send({ sessionId: 999999, method: 'upi' });
+    const theirs = await driverB.post('/api/payments').send({ sessionId: sessionA, method: 'upi', upiId: 'driverb@okaxis' });
+    const missing = await driverB.post('/api/payments').send({ sessionId: 999999, method: 'upi', upiId: 'driverb@okaxis' });
 
     expect(theirs.status).toBe(404);
     expect(theirs.body).toEqual(missing.body);
@@ -229,7 +233,7 @@ describe("one user cannot reach another user's data", () => {
     expect(mine.body.reservations).toEqual([]);
   });
 
-  test("a driver cannot open another user's history, and an attendant cannot open any history or payments list", async () => {
+  test("a driver cannot open another user's history, and an attendant cannot open any history or a driver's unpaid list", async () => {
     expect((await driverB.get(`/api/history/users/${userA.id}`)).status).toBe(403);
     expect((await attendant.get('/api/history')).status).toBe(403);
     expect((await attendant.get(`/api/history/users/${userA.id}`)).status).toBe(403);
@@ -242,7 +246,7 @@ describe("one user cannot reach another user's data", () => {
       expect((await agent.get(`/api/admin/users/${userA.id}/vehicles`)).status).toBe(403);
       expect((await agent.get(`/api/history/users/${userA.id}`)).status).toBe(403);
     }
-    expect((await admin.get(`/api/history/users/${userA.id}`)).body.sessions.map((s) => s.id)).toEqual([sessionA]);
+    expect((await admin.get(`/api/history/users/${userA.id}`)).body.sessions.map((s) => s.id)).toEqual([finishedA]);
   });
 
   test('the audit log and the reports are for administrators only', async () => {
