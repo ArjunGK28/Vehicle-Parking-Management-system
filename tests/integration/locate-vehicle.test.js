@@ -157,11 +157,11 @@ describe('latest slot after reassignment', () => {
   test('ST-07_06: the result shows the new slot after the session is moved', async () => {
     const first = await addSlot('P-1');
     const second = await addSlot('P-2');
-    const session = await park();
+    await park();
     expect((await locate(attendant, PLATE)).body.slot.code).toBe(first.code);
 
-    // Slot reassignment is not built yet, so move the active session directly.
-    await db.query('UPDATE parking_sessions SET slot_id = ? WHERE id = ?', [second.id, session.sessionId]);
+    const moved = await attendant.post('/api/parking/move').send({ registrationNumber: PLATE, slotId: second.id });
+    expect(moved.status).toBe(200);
 
     const res = await locate(attendant, PLATE);
     expect(res.status).toBe(200);

@@ -1,6 +1,6 @@
 const service = require('./parking.service');
 const { SESSION_STATUS } = require('./sessionStatuses');
-const { validateLocateQuery, cleanRegistration, validateExit } = require('./parking.validation');
+const { validateLocateQuery, cleanRegistration, validateExit, validateMove } = require('./parking.validation');
 
 async function assignSlot(req, res) {
   const { vehicleId } = req.body;
@@ -45,6 +45,16 @@ async function exit(req, res) {
   });
 }
 
+// #102: the attendant moves a parked vehicle to another slot.
+async function move(req, res) {
+  const session = await service.moveVehicle(validateMove(req.body || {}));
+
+  res.json({
+    session,
+    message: `Vehicle ${session.registrationNumber} moved from slot ${session.fromSlotCode} to slot ${session.slotCode}.`,
+  });
+}
+
 // FR-07: never cached, so the answer always shows the vehicle's latest slot.
 async function locate(req, res) {
   const query = validateLocateQuery(req.query);
@@ -59,4 +69,4 @@ async function locate(req, res) {
   });
 }
 
-module.exports = { assignSlot, enter, exit, locate };
+module.exports = { assignSlot, enter, exit, move, locate };

@@ -65,6 +65,43 @@ test.describe('main flows', () => {
     await expect(page.getByText(/Fee ₹\d+/).first()).toBeVisible();
   });
 
+  test('an attendant moves a parked vehicle and Track vehicle shows the new slot (#102, FR-07)', async ({ page }) => {
+    await resetData({ vehicles: [{ plate: PLATE }] });
+    await login(page, ACCOUNTS.attendant);
+
+    await page.getByRole('link', { name: 'Vehicle entry' }).click();
+    await page.getByLabel('Registration number').fill(PLATE);
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Go to P-01')).toBeVisible();
+
+    // Move
+    await page.getByRole('link', { name: 'Attendant dashboard' }).click();
+    await page.getByRole('link', { name: 'Move vehicle' }).click();
+    await page.getByLabel('Registration number').fill(PLATE);
+    await page.getByRole('button', { name: 'Find vehicle' }).click();
+    await expect(page.getByRole('heading', { name: `${PLATE} is in slot P-01` })).toBeVisible();
+    // Only free slots of its type are offered.
+    const slot = page.getByLabel('Move to slot');
+    await expect(slot.getByRole('option', { name: 'P-01' })).toHaveCount(0);
+    await expect(slot.getByRole('option', { name: 'B-01' })).toHaveCount(0);
+    await slot.selectOption({ label: 'P-05' });
+    await page.getByRole('button', { name: 'Confirm move' }).click();
+    await expect(page.getByText('Go to P-05')).toBeVisible();
+
+    // Availability
+    await page.getByRole('link', { name: 'Attendant dashboard' }).click();
+    await page.getByRole('link', { name: 'Slot availability' }).click();
+    await expect(page.locator('.slot-tile', { hasText: 'P-05' })).toContainText('Occupied');
+    await expect(page.locator('.slot-tile', { hasText: 'P-01' })).toContainText('Available');
+
+    // Locate
+    await page.getByRole('link', { name: 'Dashboard', exact: false }).first().click();
+    await page.getByRole('link', { name: 'Track vehicle' }).click();
+    await page.getByLabel('Registration number').fill(PLATE);
+    await page.getByRole('button', { name: 'Find vehicle' }).click();
+    await expect(page.getByText(`Vehicle ${PLATE} is in slot P-05.`)).toBeVisible();
+  });
+
   test('UPI fails at the exit and the attendant takes cash later from the waiting list (UC-08, FR-10)', async ({ page }) => {
     await resetData({ vehicles: [{ plate: PLATE }] });
     await login(page, ACCOUNTS.attendant);

@@ -61,4 +61,14 @@ function validateExit(body = {}) {
   return { registrationNumber, exitTime };
 }
 
-module.exports = { validateLocateQuery, cleanRegistration, validateExit };
+// #102: returns clean { registrationNumber, slotId } or throws a 400.
+function validateMove(body = {}) {
+  const registrationNumber = cleanRegistration(body.registrationNumber);
+
+  if (!Number.isInteger(body.slotId) || body.slotId <= 0) {
+    throw new HttpError(400, 'Please correct the highlighted fields', { slotId: 'Choose a slot' });
+  }
+  return { registrationNumber, slotId: body.slotId };
+}
+
+module.exports = { validateLocateQuery, cleanRegistration, validateExit, validateMove };

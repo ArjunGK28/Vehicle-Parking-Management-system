@@ -91,21 +91,50 @@ async function findAvailableSlot(connection, vehicleType) {
     );
 
     for (const { id } of candidates) {
-      const [rows] = await connection.query(
-        `SELECT ps.id, ps.code, ps.slot_type AS type
-         FROM parking_slots ps
-         WHERE ps.id = ?
-           AND ${SLOT_IS_FREE}
-         FOR UPDATE SKIP LOCKED`,
-        [id],
-      );
-      if (rows[0]) return rows[0];
+      const slot = await lockFreeSlot(connection, id);
+      if (slot) return slot;
     }
 
     if (candidates.length < batch) break; // nothing more to try
   }
 
   return null;
+}
+
+// Locks this slot for the transaction if it is free. Null if it is not free, or another
+// request is assigning it right now.
+async function lockFreeSlot(connection, slotId) {
+  const [rows] = await connection.query(
+    `SELECT ps.id, ps.code, ps.slot_type AS type
+     FROM parking_slots ps
+     WHERE ps.id = ?
+       AND ${SLOT_IS_FREE}
+     FOR UPDATE SKIP LOCKED`,
+    [slotId],
+  );
+
+  return rows[0] || null;
+}
+
+// The slot a vehicle is being moved to, whatever its state.
+async function findSlotById(connection, slotId) {
+  const [rows] = await connection.query(
+    'SELECT id, code, slot_type AS type FROM parking_slots WHERE id = ?',
+    [slotId],
+  );
+
+  return rows[0] || null;
+}
+
+// #102: the session carries on in the new slot. Nothing else about it changes.
+async function moveSession(connection, sessionId, slotId) {
+  await connection.query(
+    `UPDATE parking_sessions
+     SET slot_id = ?
+     WHERE id = ?
+       AND status = '${SESSION_STATUS.ACTIVE}'`,
+    [slotId, sessionId],
+  );
 }
 
 // DR-08: the slot this vehicle has reserved for the current time, locked for this
@@ -290,6 +319,9 @@ module.exports = {
   findAvailableSlot,
   findReservedSlot,
   completeReservationsInForce,
+  lockFreeSlot,
+  findSlotById,
+  moveSession,
   findOnSiteSessionForVehicle,
   createParkingSession,
   findOnSiteSessionByRegistration,

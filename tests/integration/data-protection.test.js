@@ -41,6 +41,7 @@ const ROUTES = [
   ['POST', '/api/parking/assign', [DRIVER, ATTENDANT]],
   ['POST', '/api/parking/entry', [ATTENDANT]],
   ['POST', '/api/parking/exit', [ATTENDANT, ADMIN]],
+  ['POST', '/api/parking/move', [ATTENDANT]],
   ['GET', '/api/parking/locate', [ATTENDANT, ADMIN]],
 
   ['GET', '/api/rates', [ADMIN]],
