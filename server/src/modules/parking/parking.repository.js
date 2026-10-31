@@ -41,16 +41,20 @@ async function findSessionEntryTime(connection, sessionId) {
   return rows[0].entryTime;
 }
 
-// A slot is free when it is enabled, no vehicle is in it (parked, or exited but not
-// yet paid), and no reservation covers the current time.
-const SLOT_IS_FREE = `
+// A slot has room when it is enabled and no vehicle is in it (parked, or exited but
+// not yet paid).
+const SLOT_HAS_ROOM = `
   ps.is_disabled = FALSE
   AND NOT EXISTS (
     SELECT 1
     FROM parking_sessions session
     WHERE session.slot_id = ps.id
       AND session.status IN ${ON_SITE_SQL}
-  )
+  )`;
+
+// A slot is free when it has room and no reservation covers the current time.
+const SLOT_IS_FREE = `
+  ${SLOT_HAS_ROOM}
   AND NOT EXISTS (
     SELECT 1
     FROM reservations r
@@ -102,6 +106,53 @@ async function findAvailableSlot(connection, vehicleType) {
   }
 
   return null;
+}
+
+// DR-08: the slot this vehicle has reserved for the current time, locked for this
+// transaction like findAvailableSlot. Null when it has no reservation in force, or the
+// reserved slot cannot take it (disabled, still occupied, or the wrong type: DR-07).
+async function findReservedSlot(connection, vehicleId, vehicleType) {
+  const [candidates] = await connection.query(
+    `SELECT ps.id
+     FROM reservations r
+     JOIN parking_slots ps ON ps.id = r.slot_id
+     WHERE r.vehicle_id = ?
+       AND r.status = 'reserved'
+       AND r.start_time <= NOW()
+       AND r.end_time > NOW()
+       AND ps.slot_type = ?
+       AND ${SLOT_HAS_ROOM}
+     ORDER BY r.start_time, r.id`,
+    [vehicleId, vehicleType],
+  );
+
+  for (const { id } of candidates) {
+    const [rows] = await connection.query(
+      `SELECT ps.id, ps.code, ps.slot_type AS type
+       FROM parking_slots ps
+       WHERE ps.id = ?
+         AND ${SLOT_HAS_ROOM}
+       FOR UPDATE SKIP LOCKED`,
+      [id],
+    );
+    if (rows[0]) return rows[0];
+  }
+
+  return null;
+}
+
+// The vehicle has arrived, so its reservations in force are used: they stop holding
+// their slots, and the slot is free for others once this stay is over.
+async function completeReservationsInForce(connection, vehicleId) {
+  await connection.query(
+    `UPDATE reservations
+     SET status = 'completed'
+     WHERE vehicle_id = ?
+       AND status = 'reserved'
+       AND start_time <= NOW()
+       AND end_time > NOW()`,
+    [vehicleId],
+  );
 }
 
 // The vehicle's session if it is still on site: parked, or exited and waiting to pay.
@@ -237,6 +288,8 @@ module.exports = {
   findVehicleByRegistration,
   findSessionEntryTime,
   findAvailableSlot,
+  findReservedSlot,
+  completeReservationsInForce,
   findOnSiteSessionForVehicle,
   createParkingSession,
   findOnSiteSessionByRegistration,

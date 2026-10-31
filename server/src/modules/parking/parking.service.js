@@ -64,7 +64,10 @@ async function startSession(vehicle) {
       throw new HttpError(409, 'This vehicle already has an active parking session');
     }
 
-    const slot = await parking.findAvailableSlot(connection, vehicle.type);
+    // DR-08: a vehicle with a reservation in force goes to the slot it reserved. If that
+    // slot cannot take it, it gets any other free slot rather than being turned away.
+    const slot = await parking.findReservedSlot(connection, vehicleId, vehicle.type)
+      || await parking.findAvailableSlot(connection, vehicle.type);
 
     if (!slot) {
       throw new HttpError(409, 'No suitable parking slot is currently available');
@@ -75,6 +78,7 @@ async function startSession(vehicle) {
       vehicleId,
       slot.id,
     );
+    await parking.completeReservationsInForce(connection, vehicleId);
     const entryTime = await parking.findSessionEntryTime(connection, sessionId);
 
     await connection.commit();
