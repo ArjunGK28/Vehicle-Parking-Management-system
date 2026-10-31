@@ -80,7 +80,7 @@ describe('changing a rate', () => {
 });
 
 describe('fees use the configured rate (FR-09)', () => {
-  test('IT_34: after a rate change, the next fee uses the new rate', async () => {
+  test('IT-12_04: after a rate change, the next fee uses the new rate', async () => {
     expect((await ratesService.feeFor('four_wheeler', 2 * HOUR)).amount).toBe(40);
 
     await admin.put('/api/rates/four_wheeler').send({ hourlyRate: 25, minimumFee: 10, billingStepMinutes: 15 });
@@ -88,12 +88,12 @@ describe('fees use the configured rate (FR-09)', () => {
     expect((await ratesService.feeFor('four_wheeler', 2 * HOUR)).amount).toBe(50);
   });
 
-  test('IT_24 data: a 1.5-hour stay at ₹30/hr costs ₹45', async () => {
+  test('IT-09_03 data: a 1.5-hour stay at ₹30/hr costs ₹45', async () => {
     await admin.put('/api/rates/four_wheeler').send({ hourlyRate: 30, minimumFee: 10, billingStepMinutes: 15 });
     expect(await ratesService.feeFor('four_wheeler', 1.5 * HOUR)).toMatchObject({ billedMinutes: 90, amount: 45 });
   });
 
-  test('IT_25 data: a zero-length stay is charged the minimum fee', async () => {
+  test('IT-09_04 data: a zero-length stay is charged the minimum fee', async () => {
     expect((await ratesService.feeFor('four_wheeler', 0)).amount).toBe(10);
   });
 

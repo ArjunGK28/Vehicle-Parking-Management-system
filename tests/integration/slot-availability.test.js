@@ -72,7 +72,7 @@ async function seedMixed() {
 }
 
 describe('who can view availability', () => {
-  test.each(['admin', 'driver', 'attendant'])('a %s can view the slot list', async (role) => {
+  test.each(['admin', 'driver', 'attendant'])('IT-03_05: a %s can view the slot list', async (role) => {
     await addSlot('P-1');
     const agent = { admin, driver, attendant }[role];
     const res = await agent.get('/api/slots');
@@ -91,7 +91,7 @@ describe('who can view availability', () => {
 });
 
 describe('slot statuses', () => {
-  test('each slot shows Available, Occupied, Reserved or Unavailable', async () => {
+  test('UT-03_01: each slot shows Available, Occupied, Reserved or Unavailable', async () => {
     await seedMixed();
     const res = await driver.get('/api/slots');
     expect(statusByCode(res)).toEqual({
@@ -172,7 +172,7 @@ describe('filtering by status', () => {
     ['occupied', ['P-2']],
     ['reserved', ['P-3']],
     ['unavailable', ['P-4']],
-  ])('?status=%s returns only those slots', async (status, expected) => {
+  ])('UT-03_02: ?status=%s returns only those slots', async (status, expected) => {
     const res = await driver.get('/api/slots').query({ status });
     expect(res.status).toBe(200);
     expect(codes(res)).toEqual(expected);
@@ -213,20 +213,30 @@ describe('filtering by status', () => {
 });
 
 describe('status changes show immediately', () => {
-  test('a slot turns Occupied when a vehicle is assigned and Available when it is released', async () => {
-    await addSlot('P-1');
-    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-1': 'available' });
-
+  test('IT-03_03: a slot turns Occupied as soon as a vehicle enters', async () => {
+    await addSlot('P-12');
     const vehicle = await addVehicle();
-    const assign = await driver.post('/api/parking/assign').send({ vehicleId: vehicle.id });
-    expect(assign.status).toBe(201);
-    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-1': 'occupied' });
+    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-12': 'available' });
 
-    // Vehicle exit (#66) is not built yet, so release the slot directly.
-    await db.query("UPDATE parking_sessions SET status = 'completed', exit_time = NOW() WHERE id = ?", [
-      assign.body.session.sessionId,
-    ]);
-    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-1': 'available' });
+    const entry = await attendant.post('/api/parking/entry').send({ registrationNumber: vehicle.registrationNumber });
+    expect(entry.status).toBe(201);
+
+    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-12': 'occupied' });
+  });
+
+  test('IT-03_04: the slot turns Available once the vehicle has exited and paid (UC-08)', async () => {
+    await admin.put('/api/rates/four_wheeler').send({ hourlyRate: 20, minimumFee: 10, billingStepMinutes: 15 });
+    await addSlot('P-12');
+    const vehicle = await addVehicle();
+    await attendant.post('/api/parking/entry').send({ registrationNumber: vehicle.registrationNumber });
+
+    const exit = await attendant.post('/api/parking/exit').send({ registrationNumber: vehicle.registrationNumber });
+    expect(exit.status).toBe(200);
+    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-12': 'occupied' });
+
+    const paid = await attendant.post('/api/payments').send({ sessionId: exit.body.session.id, method: 'cash' });
+    expect(paid.status).toBe(201);
+    expect(statusByCode(await driver.get('/api/slots'))).toEqual({ 'P-12': 'available' });
   });
 
   test('a slot turns Unavailable as soon as an admin disables it', async () => {
@@ -237,7 +247,7 @@ describe('status changes show immediately', () => {
 });
 
 describe('NFR-01: the list loads within 2 seconds for 95% of requests', () => {
-  test('300 slots with sessions and reservations load in under 2 seconds at the 95th percentile', async () => {
+  test('ST-03_06: 300 slots with sessions and reservations load in under 2 seconds at the 95th percentile', async () => {
     const rows = Array.from({ length: 300 }, (_, i) => [`S-${i + 1}`, i % 3 === 0 ? 'two_wheeler' : 'four_wheeler']);
     await db.query('INSERT INTO parking_slots (code, slot_type) VALUES ?', [rows]);
     await occupy({ id: 1, type: 'four_wheeler' });

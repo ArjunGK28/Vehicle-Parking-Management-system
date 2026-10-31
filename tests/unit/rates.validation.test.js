@@ -13,7 +13,7 @@ function fieldErrors(fn) {
 }
 
 describe('validateRate', () => {
-  test('accepts the Test Plan rate (IT_34 data: ₹25/hr)', () => {
+  test('accepts the Test Plan rate (IT-12_04 data: ₹25/hr)', () => {
     expect(validateRate(valid)).toEqual(valid);
   });
 

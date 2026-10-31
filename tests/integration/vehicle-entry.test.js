@@ -107,13 +107,34 @@ describe('recording entry (FR-05)', () => {
     expect(Date.now() - started).toBeLessThan(3000);
   });
 
-  test('a two-wheeler gets a two-wheeler slot (DR-07)', async () => {
+  test('UT-06_02: a two-wheeler gets a two-wheeler slot (DR-07)', async () => {
     await addSlot('P-08', 'four_wheeler');
     await addSlot('B-1', 'two_wheeler');
 
     const res = await enter('KA05MN0001');
 
     expect(res.body.session).toMatchObject({ slotCode: 'B-1', slotType: 'two_wheeler' });
+  });
+});
+
+describe('the assigned slot is consistent everywhere (FR-06)', () => {
+  test('ST-06_06: after entry the slot shows Occupied for every role, in tracking and in the report', async () => {
+    await addSlot('P-08');
+
+    const res = await enter('KA01AB1234');
+    expect(res.status).toBe(201);
+
+    for (const agent of [driver, attendant, admin]) {
+      const list = await agent.get('/api/slots');
+      expect(list.body.slots.find((s) => s.code === 'P-08').status).toBe('occupied');
+    }
+
+    const located = await attendant.get('/api/parking/locate').query({ registrationNumber: 'KA01AB1234' });
+    expect(located.body.slot).toMatchObject({ code: 'P-08', status: 'occupied' });
+
+    const [[today]] = await db.query("SELECT DATE_FORMAT(NOW(), '%Y-%m-%d') AS d");
+    const report = await admin.get('/api/reports/occupancy').query({ from: today.d, to: today.d });
+    expect(report.body.current.occupied).toBe(1);
   });
 });
 

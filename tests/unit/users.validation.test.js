@@ -14,12 +14,12 @@ function fieldErrors(fn) {
 }
 
 describe('validateRegistration', () => {
-  test('accepts the Test Plan details and normalises email (UT_01 data)', () => {
+  test('accepts the Test Plan details and normalises email (UT-01_01 data)', () => {
     const result = validateRegistration({ name: ' Arjun ', email: 'Arjun@Example.com ', password: 'Abc@123' });
     expect(result).toEqual({ name: 'Arjun', email: 'arjun@example.com', password: 'Abc@123' });
   });
 
-  test('rejects a malformed email such as abc@com (IT_03 data)', () => {
+  test('rejects a malformed email such as abc@com (IT-01_05 data)', () => {
     const fields = fieldErrors(() => validateRegistration({ name: 'Arjun', email: 'abc@com', password: 'Abc@123' }));
     expect(fields).toEqual({ email: 'Enter a valid email address' });
   });

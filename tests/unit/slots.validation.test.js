@@ -15,7 +15,7 @@ function fieldErrors(fn) {
 }
 
 describe('validateNewSlot', () => {
-  test('accepts the Test Plan slot and normalises the code (IT_35 data)', () => {
+  test('accepts the Test Plan slot and normalises the code (IT-12_05 data)', () => {
     expect(validateNewSlot({ code: ' p-30 ', type: 'four_wheeler' })).toEqual({ code: 'P-30', type: 'four_wheeler' });
   });
 

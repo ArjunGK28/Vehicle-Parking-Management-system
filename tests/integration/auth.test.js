@@ -14,7 +14,7 @@ function register(body = arjun) {
 }
 
 describe('registration', () => {
-  test('UT_01: valid details create an account with a confirmation', async () => {
+  test('UT-01_01: valid details create an account with a confirmation', async () => {
     const res = await register();
     expect(res.status).toBe(201);
     expect(res.body.message).toMatch(/account created/i);
@@ -29,14 +29,14 @@ describe('registration', () => {
     expect(row.password_hash).toMatch(/^\$2[aby]\$/);
   });
 
-  test('IT_02: a duplicate email is rejected', async () => {
+  test('IT-01_04: a duplicate email is rejected', async () => {
     await register();
     const res = await register({ ...arjun, name: 'Someone Else', email: 'ARJUN@example.com' });
     expect(res.status).toBe(409);
     expect(res.body.fields.email).toBe('Email is already in use');
   });
 
-  test('IT_03: a malformed email (abc@com) is rejected', async () => {
+  test('IT-01_05: a malformed email (abc@com) is rejected', async () => {
     const res = await register({ ...arjun, email: 'abc@com' });
     expect(res.status).toBe(400);
     expect(res.body.fields.email).toBe('Enter a valid email address');
@@ -53,7 +53,7 @@ describe('registration', () => {
 describe('login', () => {
   beforeEach(() => register());
 
-  test('UT_02: correct credentials log in and open a session', async () => {
+  test('UT-01_02: correct credentials log in and open a session', async () => {
     const agent = request.agent(app);
     const res = await agent.post('/api/auth/login').send({ email: arjun.email, password: arjun.password });
     expect(res.status).toBe(200);
@@ -65,7 +65,7 @@ describe('login', () => {
     expect(me.body.user.email).toBe(arjun.email);
   });
 
-  test('IT_01: a wrong password shows an error and denies access', async () => {
+  test('IT-01_03: a wrong password shows an error and denies access', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: arjun.email, password: 'wrong-pass' });
     expect(res.status).toBe(401);
     expect(res.body.error).toBe('Invalid email or password');

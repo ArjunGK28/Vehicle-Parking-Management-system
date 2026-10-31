@@ -48,7 +48,7 @@ const locate = (agent, registrationNumber) =>
   agent.get('/api/parking/locate').query(registrationNumber === undefined ? {} : { registrationNumber });
 
 describe('searching for a parked vehicle', () => {
-  test('an attendant gets the vehicle’s slot and status', async () => {
+  test('UT-07_01: an attendant gets the vehicle’s slot and status', async () => {
     await addSlot('P-1');
     const session = await park();
 
@@ -62,7 +62,7 @@ describe('searching for a parked vehicle', () => {
     expect(res.body.message).toBe(`Vehicle ${PLATE} is in slot P-1.`);
   });
 
-  test('an administrator can search too', async () => {
+  test('UT-07_02: an administrator can search too', async () => {
     await addSlot('P-1');
     await park();
     const res = await locate(admin, PLATE);
@@ -95,7 +95,7 @@ describe('searching for a parked vehicle', () => {
 });
 
 describe('a vehicle that is not parked', () => {
-  test('a registered vehicle with no session returns "no active session found"', async () => {
+  test('IT-07_03: a registered vehicle with no session returns "no active session found"', async () => {
     const res = await locate(attendant, PLATE);
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('No active parking session found for this vehicle');
@@ -119,7 +119,7 @@ describe('a vehicle that is not parked', () => {
 });
 
 describe('invalid input', () => {
-  test.each([undefined, '', '   '])('an empty search (%p) shows a validation message', async (value) => {
+  test.each([undefined, '', '   '])('IT-07_04: an empty search (%p) shows a validation message', async (value) => {
     const res = await locate(attendant, value);
     expect(res.status).toBe(400);
     expect(res.body.fields).toEqual({ registrationNumber: 'Enter a registration number' });
@@ -138,7 +138,7 @@ describe('invalid input', () => {
 });
 
 describe('access (NFR-11)', () => {
-  test('IT_20: a driver trying to locate a vehicle is denied', async () => {
+  test('IT-07_05: a driver trying to locate a vehicle is denied', async () => {
     await addSlot('P-1');
     await park();
     const res = await locate(driver, PLATE);
@@ -154,7 +154,7 @@ describe('access (NFR-11)', () => {
 });
 
 describe('latest slot after reassignment', () => {
-  test('the result shows the new slot after the session is moved', async () => {
+  test('ST-07_06: the result shows the new slot after the session is moved', async () => {
     const first = await addSlot('P-1');
     const second = await addSlot('P-2');
     const session = await park();

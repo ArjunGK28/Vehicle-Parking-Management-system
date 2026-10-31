@@ -79,7 +79,7 @@ describe('POST /api/reservations', () => {
     expect(res.body.fields).toEqual({ startTime: 'A valid start time is required' });
   });
 
-  test('creates a reservation for the logged-in driver', async () => {
+  test('UT-04_01: creates a reservation for the logged-in driver', async () => {
     const res = await agent
       .post('/api/reservations')
       .send(reservationBody());
@@ -93,7 +93,7 @@ describe('POST /api/reservations', () => {
     });
   });
 
-  test('requires login', async () => {
+  test('UT-04_02: requires login', async () => {
     const res = await request(app)
       .post('/api/reservations')
       .send(reservationBody());
@@ -130,7 +130,7 @@ describe('POST /api/reservations', () => {
     expect(res.status).toBe(404);
   });
 
-  test('rejects overlapping reservations for the same slot', async () => {
+  test('IT-04_03: rejects overlapping reservations for the same slot', async () => {
     const first = await agent
       .post('/api/reservations')
       .send(reservationBody());
@@ -192,6 +192,41 @@ describe('POST /api/reservations', () => {
       );
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe('a reservation holds its slot', () => {
+  // A window around the current time, so the reservation is in force now.
+  const coveringNow = () => ({
+    startTime: new Date(Date.now() - 3600000).toISOString(),
+    endTime: new Date(Date.now() + 3600000).toISOString(),
+  });
+
+  async function staff(role, email) {
+    return loginAs(await createUser(role, { email }));
+  }
+
+  test('UT-04_01: the slot shows Reserved during the reservation', async () => {
+    const res = await agent.post('/api/reservations').send(reservationBody(coveringNow()));
+    expect(res.status).toBe(201);
+
+    const list = await agent.get('/api/slots');
+    expect(list.body.slots.find((s) => s.id === slotId).status).toBe('reserved');
+  });
+
+  test('IT-04_05: a reserved slot is not given to another vehicle (DR-08)', async () => {
+    await agent.post('/api/reservations').send(reservationBody(coveringNow()));
+    const attendant = await staff(ROLES.ATTENDANT, 'attendant-reserve@example.com');
+
+    // P-100 is the only slot, and it is reserved for someone else.
+    const refused = await attendant.post('/api/parking/entry').send({ registrationNumber: otherVehicle.registrationNumber });
+    expect(refused.status).toBe(409);
+
+    // Another free slot is used instead of the reserved one.
+    await db.query("INSERT INTO parking_slots (code, slot_type) VALUES ('P-101', 'four_wheeler')");
+    const entered = await attendant.post('/api/parking/entry').send({ registrationNumber: otherVehicle.registrationNumber });
+    expect(entered.status).toBe(201);
+    expect(entered.body.session.slotCode).toBe('P-101');
   });
 });
 
