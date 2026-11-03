@@ -29,6 +29,13 @@ router.post(
   controller.exit,
 );
 
+// Attendants move a parked vehicle to another slot (#102).
+router.post(
+  '/move',
+  allowRoles(ROLES.ATTENDANT),
+  controller.move,
+);
+
 // Attendants and administrators can find where a vehicle is parked (FR-07, NFR-11).
 router.get(
   '/locate',

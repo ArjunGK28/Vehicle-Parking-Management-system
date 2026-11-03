@@ -13,6 +13,7 @@ import SlotAvailabilityPage from './pages/slots/SlotAvailabilityPage.jsx';
 import LocateVehiclePage from './pages/staff/LocateVehiclePage.jsx';
 import VehicleEntryPage from './pages/attendant/VehicleEntryPage.jsx';
 import VehicleExitPage from './pages/attendant/VehicleExitPage.jsx';
+import MoveVehiclePage from './pages/attendant/MoveVehiclePage.jsx';
 import UsersPage from './pages/admin/UsersPage.jsx';
 import AuditLogPage from './pages/admin/AuditLogPage.jsx';
 import ReportsPage from './pages/admin/ReportsPage.jsx';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/attendant" element={<RequireAuth roles={[ROLES.ATTENDANT]}><AttendantHome /></RequireAuth>} />
           <Route path="/attendant/entry" element={<RequireAuth roles={[ROLES.ATTENDANT]}><VehicleEntryPage /></RequireAuth>} />
           <Route path="/attendant/exit" element={<RequireAuth roles={[ROLES.ATTENDANT]}><VehicleExitPage /></RequireAuth>} />
+          <Route path="/attendant/move" element={<RequireAuth roles={[ROLES.ATTENDANT]}><MoveVehiclePage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth roles={[ROLES.ADMIN]}><AdminHome /></RequireAuth>} />
           <Route path="/admin/slots" element={<RequireAuth roles={[ROLES.ADMIN]}><SlotsPage /></RequireAuth>} />
           <Route path="/admin/rates" element={<RequireAuth roles={[ROLES.ADMIN]}><RatesPage /></RequireAuth>} />

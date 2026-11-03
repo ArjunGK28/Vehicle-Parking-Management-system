@@ -202,4 +202,65 @@ async function exitVehicle({ registrationNumber, exitTime }) {
   }
 }
 
-module.exports = { assignSlot, enterVehicle, exitVehicle, locate };
+// #102: the attendant moves a parked vehicle to another free slot of its type. The same
+// session continues, so the entry time and the fee are not affected. The vehicle row is
+// locked first, as in entry and exit, and the new slot is locked so two moves cannot
+// end up in the same slot (NFR-04).
+async function moveVehicle({ registrationNumber, slotId }) {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+    await connection.beginTransaction();
+
+    const vehicleId = await parking.lockVehicleByRegistration(connection, registrationNumber);
+    const session = vehicleId
+      ? await parking.findOnSiteSessionForExit(connection, vehicleId)
+      : null;
+    if (!session) {
+      throw new HttpError(404, 'No active parking session found for this vehicle');
+    }
+    if (session.status === SESSION_STATUS.AWAITING_PAYMENT) {
+      throw new HttpError(409, `Exit is already recorded for ${session.registrationNumber}. Take payment instead of moving it.`);
+    }
+
+    const target = await parking.findSlotById(connection, slotId);
+    if (!target) {
+      throw new HttpError(404, 'Parking slot not found');
+    }
+    if (target.id === session.slotId) {
+      throw new HttpError(409, `Vehicle ${session.registrationNumber} is already in slot ${target.code}`);
+    }
+    // DR-07
+    if (target.type !== session.slotType) {
+      throw new HttpError(409, `Slot ${target.code} is for a different vehicle type. Choose another slot.`);
+    }
+    // DR-03, DR-08
+    if (!(await parking.lockFreeSlot(connection, target.id))) {
+      throw new HttpError(409, `Slot ${target.code} is not free. Choose another slot.`);
+    }
+
+    await parking.moveSession(connection, session.id, target.id);
+
+    await connection.commit();
+
+    return {
+      id: session.id,
+      vehicleId: session.vehicleId,
+      registrationNumber: session.registrationNumber,
+      fromSlotCode: session.slotCode,
+      slotId: target.id,
+      slotCode: target.code,
+      slotType: target.type,
+      entryTime: session.entryTime,
+      status: SESSION_STATUS.ACTIVE,
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
+module.exports = { assignSlot, enterVehicle, exitVehicle, moveVehicle, locate };
