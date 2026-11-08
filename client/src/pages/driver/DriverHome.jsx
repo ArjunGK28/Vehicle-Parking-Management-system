@@ -1,5 +1,6 @@
 import AppLayout from '../../components/AppLayout.jsx';
 import FeatureList from '../../components/FeatureList.jsx';
+import SlotMap from '../../components/SlotMap.jsx';
 
 const features = [
   { name: 'My vehicles', description: 'Register and manage your vehicles (FR-02)', ready: true, to: '/driver/vehicles' },
@@ -12,6 +13,7 @@ const features = [
 export default function DriverHome() {
   return (
     <AppLayout>
+      <SlotMap />
       <FeatureList title="Driver dashboard" features={features} />
     </AppLayout>
   );
