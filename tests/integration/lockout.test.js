@@ -57,6 +57,14 @@ describe('locking', () => {
     expect(res.body.error).toMatch(/2 minutes/);
   });
 
+  test('under a minute left reads "1 minute", not "1 minutes" or "0 minutes"', async () => {
+    await failTimes(5);
+    await setLockedUntil('DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 SECOND)');
+    const res = await login(good);
+    expect(res.status).toBe(423);
+    expect(res.body.error).toMatch(/Try again in 1 minute\.$/);
+  });
+
   test('locking one account does not affect another', async () => {
     const other = { name: 'Other', email: 'other@example.com', password: 'Abc@123' };
     await request(app).post('/api/auth/register').send(other);
