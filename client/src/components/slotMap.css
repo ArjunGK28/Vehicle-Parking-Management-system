@@ -117,3 +117,41 @@
   border-style: dashed;
 }
 .bay-closed .bay-art { opacity: 0.5; }
+
+/* Editable map (administrators): each bay is a button. */
+.bay:has(.bay-button) { padding: 0; }
+.bay-button {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.5rem 0.25rem 0.4rem;
+  color: inherit;
+  background: none;
+  border-radius: 4px;
+  font-weight: inherit;
+}
+.bay-button:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.bay-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bay-selected { box-shadow: 0 0 0 3px var(--primary); }
+
+.lot-section-header { flex-wrap: wrap; align-items: center; }
+.lot-section-header h3 { margin-right: auto; }
+
+.inline-form.add-bay-form {
+  grid-template-columns: minmax(0, 16rem) auto auto;
+  justify-content: start;
+  margin: 0 0 0.75rem;
+}
+@media (max-width: 560px) {
+  .inline-form.add-bay-form { grid-template-columns: 1fr auto auto; }
+}
+
+.bay-actions {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+}
+.bay-actions p { margin: 0 0 0.5rem; }
+.bay-actions-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
