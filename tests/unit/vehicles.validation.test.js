@@ -58,6 +58,14 @@ describe('validateVehicle (FR-02)', () => {
     });
   });
 
+  test('rejects a model over 100 characters and a colour over 50', () => {
+    expect(fieldErrors(() => validateVehicle({ ...valid, model: 'M'.repeat(101), colour: 'C'.repeat(51) }))).toEqual({
+      model: 'Vehicle model must not exceed 100 characters',
+      colour: 'Vehicle colour must not exceed 50 characters',
+    });
+    expect(validateVehicle({ ...valid, model: 'M'.repeat(100), colour: 'C'.repeat(50) }).model).toHaveLength(100);
+  });
+
   test('reports every missing field at once', () => {
     expect(Object.keys(fieldErrors(() => validateVehicle({}))).sort()).toEqual([
       'colour',
