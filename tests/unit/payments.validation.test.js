@@ -40,6 +40,11 @@ describe('payment validation (FR-10)', () => {
     expect(passesLuhn('4111111111111112')).toBe(false);
   });
 
+  test('the Luhn check subtracts 9 when a doubled digit is over 9', () => {
+    expect(passesLuhn('5555555555554444')).toBe(true);
+    expect(passesLuhn('5555555555554445')).toBe(false);
+  });
+
   test.each([
     ['too short', '41111111111'],
     ['too long', '41111111111111111111'],

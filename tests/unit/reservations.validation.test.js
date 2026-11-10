@@ -33,7 +33,7 @@ describe('toMysqlDateTime', () => {
     expect(toMysqlDateTime(iso)).toBe(localText(new Date(iso)));
   });
 
-  test.each(['1', 'March 5', '2027-02-30T10:00', '2027-01-10T25:00', '2027-01-10', '', undefined, 1700000000000])(
+  test.each(['1', 'March 5', '2027-02-30T10:00', '2027-13-45T10:00:00Z', '2027-01-10T25:00', '2027-01-10', '', undefined, 1700000000000])(
     'refuses %p',
     (input) => {
       expect(toMysqlDateTime(input)).toBeNull();

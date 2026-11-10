@@ -144,6 +144,23 @@ describe('adding and removing users', () => {
     expect((await admin.get('/api/admin/users?role=driver')).body.users).toHaveLength(1);
   });
 
+  test('an attendant who recorded payments is kept, so the payment records are not lost', async () => {
+    const { vehicle } = await driverWithCar();
+    await giveHistory(vehicle.id);
+    const attendantUser = await createUser(ROLES.ATTENDANT, { email: 'att@example.com' });
+    const [[session]] = await db.query('SELECT id FROM parking_sessions WHERE vehicle_id = ?', [vehicle.id]);
+    await db.query(
+      "INSERT INTO payments (session_id, amount, method, status, recorded_by) VALUES (?, 40, 'cash', 'paid', ?)",
+      [session.id, attendantUser.id],
+    );
+
+    const res = await admin.delete(`/api/admin/users/${attendantUser.id}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('This user has records that must be kept and cannot be removed');
+    expect((await admin.get('/api/admin/users?role=attendant')).body.users).toHaveLength(1);
+  });
+
   test.each(['999999', '1abc'])('user id %p is not found', async (id) => {
     expect((await admin.delete(`/api/admin/users/${id}`)).status).toBe(404);
     expect((await admin.get(`/api/admin/users/${id}/vehicles`)).status).toBe(404);
