@@ -1,0 +1,157 @@
+/* Live parking map on the driver dashboard. */
+:root {
+  --bay-free: #1b7a3d;
+  --bay-free-bg: #e4f5ea;
+  --bay-taken: #c62828;
+  --bay-taken-bg: #fdeaea;
+  --bay-closed: #7a8294;
+  --bay-closed-bg: #eef0f4;
+  --lane: #e6e9ef;
+  --lane-line: #c9a227;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bay-free: #6fd896;
+    --bay-free-bg: #15301f;
+    --bay-taken: #ff8a80;
+    --bay-taken-bg: #3a1b1d;
+    --bay-closed: #8a93a6;
+    --bay-closed-bg: #232a36;
+    --lane: #141922;
+    --lane-line: #b8952a;
+  }
+}
+
+.slot-map-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem 1.5rem;
+}
+.slot-map-header p { margin: 0; }
+
+.lot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+.lot-legend li { display: flex; align-items: center; gap: 0.4rem; }
+.legend-swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+  border: 2px solid currentColor;
+}
+
+.lot-section { margin-top: 1.25rem; }
+.lot-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.lot-section-header h3 { margin: 0; font-size: 1rem; }
+.lot-free { color: var(--muted); font-size: 0.9rem; }
+.lot-free strong { color: var(--bay-free); font-size: 1.05rem; }
+
+/* The lot: two rows of bays with a driving lane between them. */
+.lot {
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.lot-lane {
+  height: 1.4rem;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, var(--lane-line) 50%, transparent 50%) center / 1.6rem 2px repeat-x,
+    var(--lane);
+}
+.lot-aisle + .lot-aisle {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+/* 10 bays per row (ROW_SIZE in SlotMap.jsx), so a short row lines up under a full one.
+   On narrow screens the bays wrap instead of shrinking too small to read. */
+.lot-row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (max-width: 720px) {
+  .lot-row { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); }
+}
+
+.bay {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.25rem 0.4rem;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  transition: color 0.3s, background-color 0.3s;
+}
+.bay-art { width: 100%; max-width: 44px; height: auto; }
+.bay-art-cutout { fill: var(--bay-bg); }
+.bay-code { color: var(--text); font-size: 0.8rem; font-weight: 600; }
+
+.bay-free { color: var(--bay-free); background: var(--bay-free-bg); --bay-bg: var(--bay-free-bg); }
+.bay-taken { color: var(--bay-taken); background: var(--bay-taken-bg); --bay-bg: var(--bay-taken-bg); }
+.bay-closed {
+  color: var(--bay-closed);
+  background: var(--bay-closed-bg);
+  --bay-bg: var(--bay-closed-bg);
+  border-style: dashed;
+}
+.bay-closed .bay-art { opacity: 0.5; }
+
+/* Editable map (administrators): each bay is a button. */
+.bay:has(.bay-button) { padding: 0; }
+.bay-button {
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.5rem 0.25rem 0.4rem;
+  color: inherit;
+  background: none;
+  border-radius: 4px;
+  font-weight: inherit;
+}
+.bay-button:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.bay-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.bay-selected { box-shadow: 0 0 0 3px var(--primary); }
+
+.lot-section-header { flex-wrap: wrap; align-items: center; }
+.lot-section-header h3 { margin-right: auto; }
+
+.inline-form.add-bay-form {
+  grid-template-columns: minmax(0, 16rem) auto auto;
+  justify-content: start;
+  margin: 0 0 0.75rem;
+}
+@media (max-width: 560px) {
+  .inline-form.add-bay-form { grid-template-columns: 1fr auto auto; }
+}
+
+.bay-actions {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+}
+.bay-actions p { margin: 0 0 0.5rem; }
+.bay-actions-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }

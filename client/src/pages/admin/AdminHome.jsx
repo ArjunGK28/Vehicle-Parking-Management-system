@@ -1,5 +1,6 @@
 import AppLayout from '../../components/AppLayout.jsx';
 import FeatureList from '../../components/FeatureList.jsx';
+import SlotMap from '../../components/SlotMap.jsx';
 
 const features = [
   { name: 'Users and vehicles', description: 'Add and remove users, manage vehicles (FR-12)', ready: true, to: '/admin/users' },
@@ -15,6 +16,7 @@ const features = [
 export default function AdminHome() {
   return (
     <AppLayout>
+      <SlotMap editable />
       <FeatureList title="Administrator dashboard" features={features} />
     </AppLayout>
   );
