@@ -11,6 +11,12 @@ export class ApiError extends Error {
 // Fired when a protected call is refused because the session ended (NFR-14).
 export const SESSION_EXPIRED_EVENT = 'session-expired';
 
+const UNREACHABLE_MESSAGE = 'Cannot reach the server. Check that it is running.';
+
+// Gateway errors come from a proxy in front of the API (the Vite dev server answers
+// 502 with an empty body when the API is not running), not from the API itself.
+const GATEWAY_STATUSES = [502, 503, 504];
+
 // options.background: true marks a refresh the page does by itself. The server then
 // does not count it as activity, so an idle session still expires after 15 minutes.
 async function request(method, path, body, { background = false } = {}) {
@@ -27,7 +33,7 @@ async function request(method, path, body, { background = false } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new ApiError(0, 'Cannot reach the server. Check that it is running.');
+    throw new ApiError(0, UNREACHABLE_MESSAGE);
   }
 
   if (res.status === 204) return null;
@@ -36,6 +42,11 @@ async function request(method, path, body, { background = false } = {}) {
     // A 401 on anything except the login calls means the session has ended.
     if (res.status === 401 && !path.startsWith('/auth/')) {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    // The API always sends { error }. Without one, the reply came from something in
+    // between, which for a gateway status means the API could not be reached.
+    if (!data.error && GATEWAY_STATUSES.includes(res.status)) {
+      throw new ApiError(res.status, UNREACHABLE_MESSAGE);
     }
     throw new ApiError(res.status, data.error || 'Request failed', data.fields);
   }
